@@ -20,6 +20,25 @@ A section about the details of the relational - graph transformation, the way th
 
 This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
 
+\subsection{Infering identities from the social network}
+
+Search for Jaroslav Peška yields the following results:
+\begin{itemize}
+    \item doc. PhDr. Jaroslav Peška Ph.D. - 77815713
+    \item doc. PhDr. Jaroslav Peška Ph.D. - null
+    \item Jaroslav Peška - null
+    \item Doc. PhDr. Jaroslav Peška Ph.D. - null
+    \item doc. PhDr. Jaroslav Peška PhD. - null
+\end{itemize}
+
+\begin{itemize}
+    \item Dmytro Yu Balakin
+    \item Dmytro Yu Batakin
+    \item Dmytro Yu. Balakin.
+\end{itemize}
+
+It is clear that most of those are the same person, but the data is not consistent. The first one is the correct one, but the other ones are missing the academic titles and the ``doc.'' prefix. The ``PhD.'' suffix is also inconsistent - sometimes it is ``PhD.'', sometimes ``Ph.D.''. The ``doc.'' prefix is also sometimes missing.
+
 \section{Analyzing the social network}
 
 The first contact with the network, description of some basic properties, discovering the features of the data and trying to mine some non-obvious relations from the data.
