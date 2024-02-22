@@ -16,6 +16,26 @@ A section about the details of the relational - graph transformation, the way th
 
 \dots
 
+\section{Processing available data}
+
+\subsection{Categorizing publications}
+
+This section talks about analyzing the publication data using different NLP techniques and categorizing them into both predefined and inferred categories using classic algorithms (e.g. K-means and the alternatives) and ML approaches (Bayesian topic modelling using LDA).
+
+This is a part of the data mining done on the data for enhancing the graph data model. As of now, the publication data is rather opaque with only the publication identificators, relations to people and text annotations in natural languages. Through the related people, there are also transitive relations to other publications, which most likely share the topic with the original publication. This is also taken as a benchmark data for the NLP-powered categorization tasks.
+
+\subsubsection{Wordnet}
+
+\subsubsection{Embedding with count-based techniques (TF-IDF, GloVe)}
+
+\subsubsection{LLM based embeddings}
+
+\subsection{Clustering the data}
+
+\subsubsection{LDA topic modelling}
+
+\subsubsection{K-means with other embeddings}
+
 \section{Inferring missing data}
 
 This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
@@ -30,6 +50,8 @@ Search for Jaroslav Peška yields the following results:
     \item Doc. PhDr. Jaroslav Peška Ph.D. - null
     \item doc. PhDr. Jaroslav Peška PhD. - null
 \end{itemize}
+
+Another example is the search for Dmytro Yu Balakin, which yields the following results:
 
 \begin{itemize}
     \item Dmytro Yu Balakin
