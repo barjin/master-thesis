@@ -34,6 +34,10 @@ There are several various ways of computing the graph layout, which we'll descri
 
     Trying to minimize the edge length by ordering the nodes on the circle also results in a more readable graph, as this layout promotes grouping closely connected subcommunities together.
 
+    In some cases, the global position of nodes in the layout can depict some qualitative variable - e.g. in a social network of people from different social groups, 
+    the node position on the y-axis might represent the person's annual income. With the edges between the nodes representing the social connections,
+    such layout can help us understand the relation between the social status and the connections between the people.
+
     \item \textbf{Grid layout} - this layout places the nodes on a grid, with the edges connecting them.
     While some optimizations, such as minimizing the edge length can be done in this case as well, 
     this type of layout usually results in a less readable graph.
@@ -42,17 +46,29 @@ There are several various ways of computing the graph layout, which we'll descri
     It is often the spatial proximity of the nodes that helps viewers understand the relations between the nodes subconciously - and while we still can 
     supply this information by using different visual cues (e.g. coloring of the nodes), it's often not as intuitive as the spatial proximity.
 
+    Unlike the hierarchical and circular layouts, there does not seem to be a clear use for the global node position for depicting some qualitative variable.
+
+    In some applications, the grid layout is sometimes used as the initial graph layout for the force-directed layout, as it's easier to calculate the initial positions of the nodes on a grid.
+
     \item \textbf{Force-directed layout} - this layout is based on the physical simulation of the forces between the nodes and edges of the graph.
     The nodes are treated as charged particles, and the edges as springs - the nodes repel each other, while the edges try to keep the nodes connected.
     
     This results in a layout where the nodes are placed in such a way that the edges are as short as possible, while the nodes are as far apart as possible.
     This is useful for visualizing the overall structure of the graph, as it's easy to see which nodes are connected to which other nodes, and how the graph is connected.
 
-    Using the edges to guide the layouting process results in a more ``intuitively'' readable graph, as the nodes that are connected are placed closer together, while the nodes that are not connected are placed further apart.
+    Using the edges to guide the layouting process results in a more ``intuitively'' readable graph, as the edges representing some sort of relation between two nodes 
+    cause the nodes to be drawn to each other. This means that related nodes are layouted closer to each other - therefore supporting the spatial proximity Gestalt principle.
 
     The force-directed layout is especially useful for visualizing large social networks, as it's easy to see which nodes are connected to which other nodes, and how the graph is connected.
-    
+    Such graph is also easy to navigate, and the viewer can easily find bridges, hubs, or other important features of the graph.
 
+    Similar to the grid layout, the global node position cannot be used to depict qualitative variables. While it might be technically possible 
+    to add auxiliary forces to the simulation to achieve this - e.g. pull nodes to the left or right of the screen based on some variable - 
+    it's not as common as in the hierarchical or circular layouts. This approach might also interfere with the edge-based layouting process,
+    causing the graph to be less readable.
 
+    Because of this reason and the very essence of the force-directed layouts, the location of the nodes in such layout is quite arbitrary 
+    - in case of large graphs, the viewer might not be able to find the node they are looking for. This is why it's often useful to add 
+    some sort of search functionality or other navigation aids to the visualization.
 \end{itemize}
 
