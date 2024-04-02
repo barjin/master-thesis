@@ -2,13 +2,57 @@
 
 This chapter discovers the reasons for social network analysis from the document retrieval point of view.
 
-\dots
-
 \section{Full-text search}
 
-A section discussing the inner workings of a full-text search and the advantages and disadvantages of this in (academic) search tools.
+Full-text search is nowadays an essential part of any information retrieval system. 
+
+Many search engines implement the full text search by utilizing the TF-IDF algorithm, which is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
 
 \dots
+
+Some entities in our academic search engine map well to the notion of a document - e.g. a \texttt{publication} or \texttt{class}, which both have inherent textual content.
+Unfortunately, this is not true for all entities in the schema. 
+
+For example, a \texttt{person} entity usually does not have any explicit textual content associated with it. When searching for a person interested in a particular topic, the search engine 
+has to rely on the textual content of the publications, classes, or other entities associated with the person, i.e. traverse - at least implicitly - the social network.
+
+A simple solution to this problem would be to represent every person as a document, concatenating all the textual content of the entities associated with the person.
+This can be further refined by assigning different weights - e.g. to the different types of entities (a \texttt{class} might be more important than a \texttt{publication}), 
+or different concatenated parts of the documents (e.g. the publication title and class name are more important than the abstracts and syllabi).
+
+Regarding adding new entities related to a given person, the concatenation serves us well - we can simply append the new entity's content to the person's document and reindex it.
+
+However, this approach has several drawbacks. First of all, assuming we're building a general academic search engine allowing for search in publications, classes and people, we would be indexing the same content multiple times.
+This is not only inefficient in terms of storage, but also prone to update errors - there is multiple copies of the same content, which have to be updated separately.
+The second issue arises from the concatenation - if any of the person's associated entities changes, the whole document has to be reindexed.
+However, this might be less of a problem than the first issue, as it's not too common for academic records to get updated or removed - at least in comparison to the number of new records being added.
+
+\subsection{Result ranking in the naive case}
+
+Result ranking in information retrieval refers to the ordering of the search results when presented to the end user. This is often based on the relevance of the documents to the current search query.
+The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
+
+While it might seem a bit superficial, the ranking is in fact still part of the information retrieval process. 
+As multiple studies show (https://link.springer.com/article/10.1007/s11151-014-9435-y, https://link.springer.com/article/10.1007/s10791-010-9150-8 and others), 
+the ranking of the search results positively correlates with the click-through rate of the results - mostly because of the typical nature of most %(talk about the direction of the attention)
+This can be further affected by other, more technical factors - such as the need for an additional user action like scroll or pagination to see the results further down the list.
+
+%% https://link.springer.com/article/10.1007/s10791-010-9150-8 - Re-ranking search results using an additional retrieved list
+
+Considering a simple tf-idf based search engine, the ranking of the search results is based on the relevance of the documents to the search query.
+This might however lead to unexpected and invafourable results.
+
+Let's go back to our idea of representing a person as a concatenated document.
+Consider two academic researchers in our system - \textit{prof. Alice} and \textit{Bc. Bob}. 
+Bob is a student of Alice, and has published several papers on \textit{Information retrieval} with her. Aside from those, Bob has not published any other papers.
+On the other hand, Alice has published a lot of papers on various topics - related to IR, but also to other similar fields. 
+
+Because of this, the document representation of Bob will be short, compared to the one of Alice.
+Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
+the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
+
+This is obviously not the desired result - Alice is the more relevant person for the query, as she most likely has more experience and knowledge in the field.
+
 
 \section{Re-ranking}
 
