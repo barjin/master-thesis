@@ -1,28 +1,31 @@
-\chapter{Social network boosted ranking}
+\chapter{Social network boosted search ranking}
 
-This chapter discovers the reasons for social network analysis from the document retrieval point of view.
+Charles Explorer is an academic search engine, which allows the user to search for publications, classes, people and study programmes in the academic domain.
+
+The following sections, we look more into the search engine part of the application, explore the possible issues with the search results ranking, 
+and experiment with utilizing the social network data for the search results ranking improvement.
 
 \section{Full-text search}
 
 Full-text search is nowadays an essential part of any information retrieval system. 
+Many search engines - including Apache Solr in Charles Explorer - implement the full text search by utilizing the TF-IDF algorithm.
+This is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
 
-Many search engines implement the full text search by utilizing the TF-IDF algorithm, which is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
+The TF-IDF algorithm is based on the term frequency and inverse document frequency of the terms in the documents - a \textit{document} is in general unstructured free text content.
+Some entities in our academic search engine map well to this notion of a \textit{document} - e.g. a \texttt{publication} or \texttt{class} both have inherent textual content (titles, abstracts or syllabi).
+Unfortunately, this does not hold for all the entities in the system.
 
-\dots
-
-Some entities in our academic search engine map well to the notion of a document - e.g. a \texttt{publication} or \texttt{class}, which both have inherent textual content.
-Unfortunately, this is not true for all entities in the schema. 
-
-For example, a \texttt{person} entity usually does not have any explicit textual content associated with it. When searching for a person interested in a particular topic, the search engine 
-has to rely on the textual content of the publications, classes, or other entities associated with the person, i.e. traverse - at least implicitly - the social network.
+As an example, a \texttt{person} entity usually does not have any explicit textual content associated with it. 
+When searching for a person interested in a particular topic, the search engine has to rely on the textual content of the publications, classes, 
+or other entities associated with the person, i.e. traverse - at least implicitly - the knowledge graph (or the social network of the person).
 
 A simple solution to this problem would be to represent every person as a document, concatenating all the textual content of the entities associated with the person.
 This can be further refined by assigning different weights - e.g. to the different types of entities (a \texttt{class} might be more important than a \texttt{publication}), 
 or different concatenated parts of the documents (e.g. the publication title and class name are more important than the abstracts and syllabi).
 
-Regarding adding new entities related to a given person, the concatenation serves us well - we can simply append the new entity's content to the person's document and reindex it.
+Regarding adding new entities related to a given person, the concatenation also serves us well - we can simply append the new entity's content to the person's document and reindex it.
 
-However, this approach has several drawbacks. First of all, assuming we're building a general academic search engine allowing for search in publications, classes and people, we would be indexing the same content multiple times.
+However, this approach also has several drawbacks. First of all, assuming we're building a general academic search engine allowing for search in publications, classes and people, we would be indexing the same content multiple times.
 This is not only inefficient in terms of storage, but also prone to update errors - there is multiple copies of the same content, which have to be updated separately.
 The second issue arises from the concatenation - if any of the person's associated entities changes, the whole document has to be reindexed.
 However, this might be less of a problem than the first issue, as it's not too common for academic records to get updated or removed - at least in comparison to the number of new records being added.
@@ -33,25 +36,50 @@ Result ranking in information retrieval refers to the ordering of the search res
 The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
 
 While it might seem a bit superficial, the ranking is in fact still part of the information retrieval process. 
-As multiple studies show (https://link.springer.com/article/10.1007/s11151-014-9435-y, https://link.springer.com/article/10.1007/s10791-010-9150-8 and others), 
-the ranking of the search results positively correlates with the click-through rate of the results - mostly because of the typical nature of most %(talk about the direction of the attention)
+As multiple studies show \footnote{https://link.springer.com/article/10.1007/s11151-014-9435-y}\footnote{https://link.springer.com/article/10.1007/s10791-010-9150-8}, 
+the ranking of the search results positively correlates with the click-through rate of the results 
+- likely because of the typical top-left to bottom-right reading pattern of the users.
 This can be further affected by other, more technical factors - such as the need for an additional user action like scroll or pagination to see the results further down the list.
 
 %% https://link.springer.com/article/10.1007/s10791-010-9150-8 - Re-ranking search results using an additional retrieved list
 
 Considering a simple tf-idf based search engine, the ranking of the search results is based on the relevance of the documents to the search query.
-This might however lead to unexpected and invafourable results.
+This is directly related to the term frequency of the query in the document - for a fixed query and a given document collection, we can forget about the inverse document frequency, as it's constant over all the documents.
+Ranking the documents solely based on the term frequency might however lead to unfavourable results - especially in the case of a proxy-representation of a given entity.
 
-Let's go back to our idea of representing a person as a concatenated document.
+
+\begin{figure}[ht!]
+    \includegraphics[width=0.8\textwidth]{../img/bob-alice-soc-netw.png}
+    \centering
+    \caption{Simple representation of the social network of Alice and Bob.}
+\end{figure}
+
+Let us explore the issues on an example where we represent people as documents, concatenating the textual content of the entities associated with them.
 Consider two academic researchers in our system - \textit{prof. Alice} and \textit{Bc. Bob}. 
 Bob is a student of Alice, and has published several papers on \textit{Information retrieval} with her. Aside from those, Bob has not published any other papers.
 On the other hand, Alice has published a lot of papers on various topics - related to IR, but also to other similar fields. 
+See a simple representation of their social network above.
+
+Note that aside from the common publications, Bob has no other entities associated with him, while Alice has other publications with other co-authors.
 
 Because of this, the document representation of Bob will be short, compared to the one of Alice.
 Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
 the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
 
-This is obviously not the desired result - Alice is the more relevant person for the query, as she most likely has more experience and knowledge in the field.
+
+\begin{figure}[ht!]
+    \includegraphics[width=0.8\textwidth]{../img/bob-alice-representations.png}
+    \centering
+    \caption{Concatenating representations of Alice and Bob as documents.}
+\end{figure}
+
+We see that the document of Bob is shorter than the one of Alice, because he has less associated entities. We can also notice that the Alice's document fully contains the Bob's document.
+    
+The colored terms represent the current search query - if Alice only published papers on the topic of the query with Bob, the term frequency of the query in Bob's document would be higher.
+In case Alice also publishes on the topic with other co-authors, it gets harder to reason about which of the term frequencies is higher.
+
+In either way, this is most likely not the desired result - while Bob has published papers only on the given topic - and therefore, by the TF-IDF measure, is more relevant to the query,
+it is likely that Alice is the more relevant person for the user, since she has published more papers in total (perhaps also on the topic of the query).
 
 
 \section{Re-ranking}

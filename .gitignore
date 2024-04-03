@@ -1,0 +1,5 @@
+*.aux
+thesis.*
+!thesis.tex
+!thesis.xmpdata
+pdfa.xmpi
