@@ -30,7 +30,7 @@ This is not only inefficient in terms of storage, but also prone to update error
 The second issue arises from the concatenation - if any of the person's associated entities changes, the whole document has to be reindexed.
 However, this might be less of a problem than the first issue, as it's not too common for academic records to get updated or removed - at least in comparison to the number of new records being added.
 
-\subsection{Result ranking in the naive case}
+\subsection{Result ranking in the naive case} \label{search-ranking-issues}
 
 Result ranking in information retrieval refers to the ordering of the search results when presented to the end user. This is often based on the relevance of the documents to the current search query.
 The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
@@ -62,11 +62,6 @@ See a simple representation of their social network above.
 
 Note that aside from the common publications, Bob has no other entities associated with him, while Alice has other publications with other co-authors.
 
-Because of this, the document representation of Bob will be short, compared to the one of Alice.
-Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
-the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
-
-
 \begin{figure}[ht!]
     \includegraphics[width=0.8\textwidth]{../img/bob-alice-representations.png}
     \centering
@@ -75,18 +70,74 @@ the search engine will consider Bob as the more relevant person for this topic. 
 
 We see that the document of Bob is shorter than the one of Alice, because he has less associated entities. We can also notice that the Alice's document fully contains the Bob's document.
     
-The colored terms represent the current search query - if Alice only published papers on the topic of the query with Bob, the term frequency of the query in Bob's document would be higher.
+The colored terms represent the current search query - if Alice only published papers on the topic of the query with Bob, the term frequency of the 
+query in Bob's document would be strictly higher, because of the shorter length.
 In case Alice also publishes on the topic with other co-authors, it gets harder to reason about which of the term frequencies is higher.
 
-In either way, this is most likely not the desired result - while Bob has published papers only on the given topic - and therefore, by the TF-IDF measure, is more relevant to the query,
-it is likely that Alice is the more relevant person for the user, since she has published more papers in total (perhaps also on the topic of the query).
+% Because of this, the document representation of Bob will be short, compared to the one of Alice.
+% Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
+% the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
 
+In either way, this approach most likely will not provide the desired outcome - while Bob has published papers only on the given topic - and therefore has higher ``TF-IDF relevance'' to the query,
+it is likely that Alice is the more relevant person for the searching user, since she is more experienced in the topic.
 
 \section{Re-ranking}
 
-A rather theoretical section about the different ranking methods and reasons for re-ranking. Later on, we propose the actual algorithm for search result re-ranking based on the social network data (and the current search results). 
+In the following sections, we go over different existing re-ranking strategies utilized in other systems and explore the possibilities of using the social network data for the re-ranking in Charles Explorer.
 
-\dots
+\subsection{Existing re-ranking strategies}
+
+In the current (2024) commercial search engines, there are often multiple re-ranking strategies available to the users.
+Unfortunately, only a small portion of the engines actually discloses the details of the re-ranking algorithms used - perhaps to protect the intellectual property and the competitive advantage.
+
+The common grounds for all those systems is the two-stage search pipeline - in the first stage, a traditional search engine is used to retrieve the initial set of results.
+Then, these results are re-ranked using a different algorithm. 
+
+While it might seem redundant, this approach allows the second algorithm to focus only the more relevant results, and be perhaps more computationally expensive.
+Unfortunately, this also means that the re-ranking algorithm is not able to affect the initial search results - it can only change the order of the results.
+It also brings in the issue of pagination - if the user has to go through multiple pages of the search results, the re-ranking might not be as effective,
+as it only affects the current page of the results.
+
+The re-ranking algorithms can be based on various factors - the user's previous interactions with the system, total popularity (click-through rate) of the items,
+diversity of the results %link to the MMR papers https://www.google.com/search?client=firefox-b-lm&q=Maximal+Marginal+Relevance 
+or NLP analysis of the documents. Especially the last one seems to be gaining traction in the recent years, as the applications of LLM models are becoming more widespread.
+
+\subsection{Graph data-based reranking}
+
+As we discussed in \ref{search-ranking-issues}
+, the traditional tf-idf based search engine might give unsatisfactory results in the case 
+of a proxy-representation of a given entity.
+We might try to address this issue by utilizing the social network data for the re-ranking of the search results.
+
+As mentioned in the previous subsection, many commercial search engines use a two-step search pipeline - the first step retrieves the initial set of results,
+and the second step re-ranks them using a different algorithm. This sounds like a good fit for our problem - we can use the traditional tf-idf based search engine 
+to retrieve the initial set of results, and then re-rank them using the social network data. 
+
+Only using the graph data for the search has several drawback described in the next section (\ref{graph-based-search}).
+
+When it comes to reranking the existing search results, we can utilize the social network data in several ways.
+
+\begin{itemize}
+    \item \textbf{Global node statistics} - As illustrated on the example of Alice and Bob above, we can use the global statistics for the nodes in the social network to re-rank the search results. These include - but are not limited to - the node degree (number of connections), centrality measures, or the number of common neighbours.
+    \item \textbf{Query relevant node statistics} %todo
+\end{itemize}
+
+%% todo structure
+\subsection{Graph data-based search} \label{graph-based-search}
+
+It would also be possible to use the social network data to entirely replace the concatenated person representations in the search engine - we could 
+only search through the ``first-order entities'' (i.e. classes and publications) and then query the social network graph for the people associated 
+with the results of the search. 
+
+This approach has several drawbacks - aside from the questionable performance and scalability / developer effort, it also might not be as effective as the concatenated representation.
+
+With the concatenated approach, we have to retrieve only \textasciitilde{} 30 results (people) for every page of the search results. 
+Those are also already ranked by the relevance to the query - even though this might not be perfect, the tf-idf based ranking is still a good approximation.
+
+With the proposed graph-based approach, we would have to retrieve many more publications and classes on each search - note that we are no longer 
+looking for the most-relevant class or publication, but for the most-relevant person - which is rather an aggregation of the relevance of the associated entities.
+This might lead to a lot of unnecessary data retrieval and processing.
+
 
 \section{Benchmarks}
 
