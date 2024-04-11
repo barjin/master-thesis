@@ -74,11 +74,34 @@ The colored terms represent the current search query - if Alice only published p
 query in Bob's document would be strictly higher, because of the shorter length.
 In case Alice also publishes on the topic with other co-authors, it gets harder to reason about which of the term frequencies is higher.
 
+The relation between the tf-idf scores of the documents of Alice and Bob can be expressed as follows:
+\begin{subequations}
+\begin{align}
+\text{tf}(q, d_{\text{Bob}}) \times \text{idf}(q, D) &\stackrel{?}{>} \text{tf}(q, d_{\text{Alice}}) \times \text{idf}(q, D) \\
+\text{tf}(q, d_{\text{Bob}}) &\stackrel{?}{>} \text{tf}(q, d_{\text{Alice}})
+\end{align}
+\end{subequations}
+
+Normalized term frequency $\text{tf}_{q,d}$ of a term $q$ in a document $d$ is defined as the number of times the term $q$ appears in the document $d$ (denoted by $f_{q,d}$),
+divided by the total number of terms in the document $d$ (the document's length).
+
+\begin{subequations}
+\begin{align}
+\frac{f_{q, d_{\text{Bob}}}}{\text{len}(d_{\text{Bob}})} &\stackrel{?}{>} \frac{f_{q, d_{\text{Alice}}}}{\text{len}(d_{\text{Alice}})} \Biggm/ \;^{-1} \\
+\frac{\text{len}(d_{\text{Bob}})}{f_{q, d_{\text{Bob}}}} &\stackrel{?}{<} \frac{\text{len}(d_{\text{Alice}})}{f_{q, d_{\text{Alice}}}} \Biggm/ \textit{assuming that } \mathit{f_{q, d_{\text{Bob}}} = f_{q, d_{\text{Alice}}}} \label{eq:51assumption}\\
+\text{len}(d_{\text{Bob}}) \;&<\;\text{len}(d_{\text{Alice}})
+\end{align}
+\end{subequations}
+
+Since we have assumed that Alice's document is a superset of Bob's document, the result inequality holds - and therefore the tf-idf score of Bob's document is higher than the one of Alice's document.
+
+Note that the assumption in the equation \ref{eq:51assumption} is only true for the cases when Alice does not publish any other papers on the topic of the query with other co-authors.
+
 % Because of this, the document representation of Bob will be short, compared to the one of Alice.
 % Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
 % the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
 
-In either way, this approach most likely will not provide the desired outcome - while Bob has published papers only on the given topic - and therefore has higher ``TF-IDF relevance'' to the query,
+In either way, this approach most likely will not provide the desired outcome - while Bob has published papers only on the given topic - and therefore has higher ``tf-idf relevance'' to the query,
 it is likely that Alice is the more relevant person for the searching user, since she is more experienced in the topic.
 
 \section{Re-ranking}
@@ -118,8 +141,16 @@ Only using the graph data for the search has several drawback described in the n
 When it comes to reranking the existing search results, we can utilize the social network data in several ways.
 
 \begin{itemize}
-    \item \textbf{Global node statistics} - As illustrated on the example of Alice and Bob above, we can use the global statistics for the nodes in the social network to re-rank the search results. These include - but are not limited to - the node degree (number of connections), centrality measures, or the number of common neighbours.
-    \item \textbf{Query relevant node statistics} %todo
+    \item \textbf{Global node statistics}: As illustrated on the example of Alice and Bob above, 
+    we can use the global statistics for the nodes in the social network to re-rank the search results. 
+    These include - but are not limited to - the node degree (number of connections), centrality measures, or the number of common neighbours.
+
+    Such statistics can be precomputed for every node in the social network before the search and stay constant over all the search queries.
+
+    \item \textbf{Query relevant node statistics}: Unlike the global node statistics, query-relevant node statisics are computed only for the nodes in the search results.
+    
+    These can perhaps define the node's relevance better (e.g. the number of query-relevant publications connected to a given person), but are often more computationally expensive to compute.
+    Given the variability of the queries, it is also harder (or impossible) to precompute these statistics.
 \end{itemize}
 
 %% todo structure
@@ -136,14 +167,28 @@ Those are also already ranked by the relevance to the query - even though this m
 
 With the proposed graph-based approach, we would have to retrieve many more publications and classes on each search - note that we are no longer 
 looking for the most-relevant class or publication, but for the most-relevant person - which is rather an aggregation of the relevance of the associated entities.
-This might lead to a lot of unnecessary data retrieval and processing.
+This might lead to a lot of unnecessary data retrieval and processing and become the bottleneck for the possible applications built on such data.
 
 
 \section{Benchmarks}
 
-A section discussing the performance benchmarks for different search result rankings.
+To determine the performance of our proposed re-ranking solution, we establish a set of benchmarks to compare the results of the traditional tf-idf based search engine with the social network enhanced search engine.
 
-\dots
+The common denominator for many of the ranking measuers is the \textit{user interaction} - the user is presented with the search results and picks the most relevant one or scores the 
+results based on the relevance to the query.
+
+Unfortunately, this is not applicable to our case - while we are tracking the user interactions in the Charles Explorer web appplication, the amount of collected data is far too low to be statistically significant.
+
+\subsection{Acquiring gold standard data}
+
+To establish a gold standard for the search results relevance (and by proxy the ranking), we do not have to rely on human interactions.
+
+Elsevier Scopus\footnote{https://www.elsevier.com/products/scopus} is a large academic database, which provides a search engine for the academic publications.
+Aside from the web application, it also provides a REST API for consuming the data programmatically.
+
+Clarivate's Web of Science\footnote{https://www.webofscience.com/} is another large academic database, providing a similar service as Scopus above.
+
+Since both of the applications are search engines for the academic publications, we can use their ranking and search results as the gold standard for our benchmarks.
 
 \section{Implementation details, performance}
 
