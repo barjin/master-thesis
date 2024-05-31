@@ -1,10 +1,56 @@
-\chapter{Visualizing large social networks}
+\chapter{Social network visualization}
 
-Even though the data mining processes described in the previous chapters give us valuable insights into the structure of social networks, they are not necessarily easy to interpret for laymen.
+Even though the data mining processes described in the previous chapters give us valuable insights into the structure of social networks, 
+they are not necessarily easy to interpret for laymen.
 One way to make the results of data mining more accessible is to create data visualization, i.e. present the data with their visual representation, 
 while using different visual cues to guide the viewers' attention towards different qualities.
 
-Data visualization is especially useful when dealing with graph-based data, such as social networks, as they have a natural visual representation.
+In this part of the thesis, we will assess the current state of the visualizations in the Charles Explorer application, 
+will propose some improvements to make the visualization more accessible to the users and will implement those.
+
+\section{Vocabulary}
+
+This section introduces some basic vocabulary that will be used throughout this chapter.
+
+\textbf{Ego network}: Ego-centric networks (or shortened to “ego” networks) are a particular type of network which specifically maps the connections of and from the perspective of a single person (an “ego”). (\cite{Lizardo2020-xo}).
+
+\textbf{Visual decoding}: Also called \textit{preattentive processing} or \textit{preattentive vision}, the visual decoding is the instantaneous perception of the visual field that comes without apparent mental effort. (\cite{Cleveland1985})
+
+\section{Assessing the current state}
+
+The current state of the Charles Explorer visualization views is quite simple. 
+
+In the \textit{Person} search mode, the user can search for people inside the Charles University. 
+When accessing a person's profile, the application shows the person's \textit{ego network} with the main person and their direct collaborators 
+as nodes and their common publications aggregated to the edges.
+
+\begin{figure}[ht!]
+    \includegraphics[width=0.8\textwidth]{../img/charles-explorer-old-view.png}
+    \centering
+    \caption{Charles Explorer showing the \textit{ego network} of a person.}
+\end{figure}
+
+The graph is displayed with force-directed layout. The edge thickness is proportional to the number of common publications between 
+the two people and the colors of the nodes represent the person's faculty association.
+
+\subsection{Problems with color coding}
+
+This approach has multiple drawbacks. 
+Firstly, the color coding of the nodes does not prove very useful, as it hinders the visual decoding of the graph, 
+since the user has to spend more attention on reading the legend, rather than interpreting the graph subconciously.
+
+This is especially true for larger ego networks with many nodes with different faculty affiliations. 
+Additionaly, the application does not provide any alternative visual cue for color vision deficient users.
+
+According to \cite{Cleveland1985}, the discriminability of colors is limited to 5 - 6 colors, which is not enough for the 17 faculties and departments 
+of the Charles University. With faculties, there is also little room for aggregation (of multiple faculties into one color), as the faculties are not 
+hierarchical.
+
+\subsection{Layouting problems}
+
+The arbitrary positions of the nodes - based on the physical simulation layout - increase the cognitive load of the viewer and contribute to the graph's worse readability.
+
+\subsection{Other visualization problems}
 
 \section{Graph layouting algorithms}
 
@@ -71,4 +117,3 @@ There are several various ways of computing the graph layout, which we'll descri
     - in case of large graphs, the viewer might not be able to find the node they are looking for. This is why it's often useful to add 
     some sort of search functionality or other navigation aids to the visualization.
 \end{itemize}
-
