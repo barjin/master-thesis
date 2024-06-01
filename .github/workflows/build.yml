@@ -1,4 +1,4 @@
-name: Build LaTex
+name: Build LaTeX document
 
 on:
     push:
@@ -13,21 +13,30 @@ jobs:
       - name: Set up Git repository
         uses: actions/checkout@v4
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44.5.2
+        with:
+          files: |
+            **/*.tex
+
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
+        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           working_directory: ./en
           root_file: ./thesis.tex
 
       - name: Move PDF to a separate directory
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: mkdir -p ./dist && mv ./en/thesis.pdf ./dist/bar-social-network-analysis-in-academic-environment-2024.pdf
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.changed-files.outputs.any_changed == 'true'
         uses: actions/configure-pages@v3
 
       - name: Upload Artifact
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.changed-files.outputs.any_changed == 'true'
         uses: actions/upload-pages-artifact@v1
         with:
           path: ./dist
