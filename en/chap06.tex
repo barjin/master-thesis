@@ -33,22 +33,28 @@ as nodes and their common publications aggregated to the edges.
 The graph is displayed with force-directed layout. The edge thickness is proportional to the number of common publications between 
 the two people and the colors of the nodes represent the person's faculty association.
 
+This approach has multiple drawbacks which we will now address and discuss.
+
 \subsection{Problems with color coding}
 
-This approach has multiple drawbacks. 
-Firstly, the color coding of the nodes does not prove very useful, as it hinders the visual decoding of the graph, 
-since the user has to spend more attention on reading the legend, rather than interpreting the graph subconciously.
+Firstly, the color coding of the nodes does not prove very useful, as it hinders the \textit{visual decoding} of the graph.
+The user spends more attention on reading the legend, rather than interpreting the graph subconciously.
 
 This is especially true for larger ego networks with many nodes with different faculty affiliations. 
 Additionaly, the application does not provide any alternative visual cue for color vision deficient users.
 
-According to \cite{Cleveland1985}, the discriminability of colors is limited to 5 - 6 colors, which is not enough for the 17 faculties and departments 
-of the Charles University. With faculties, there is also little room for aggregation (of multiple faculties into one color), as the faculties are not 
+According to \cite{Cleveland1985}, the discriminability of colors by people is limited to 5 - 6 colors. This is not enough for the 17 faculties and departments 
+of the Charles University. With faculties, there is also little room for a meaningful aggregation (of multiple faculties into one color), as the faculty structure is not 
 hierarchical.
 
 \subsection{Layouting problems}
 
-The arbitrary positions of the nodes - based on the physical simulation layout - increase the cognitive load of the viewer and contribute to the graph's worse readability.
+The arbitrary positions of the nodes based on the physical simulation layout increase the cognitive load 
+of the viewer and contribute to the graph's worse readability.
+
+\cite{munzner2015visualization} states that the position of data points on a common scale is the most effective way to communicate the data to the viewer.
+By using the physical simulation layout, we are willingly giving up this visual channel (the x and y position of the nodes in the screen space).
+
 
 \subsection{Other visualization problems}
 

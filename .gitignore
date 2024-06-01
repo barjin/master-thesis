@@ -3,3 +3,6 @@ thesis.*
 !thesis.tex
 !thesis.xmpdata
 pdfa.xmpi
+abstract.*
+!abstract.tex
+!abstract.xmpdata

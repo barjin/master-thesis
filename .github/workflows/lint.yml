@@ -1,0 +1,21 @@
+name: Lint with Vale
+
+on:
+    pull_request:
+    push: 
+        branches:
+            - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint with Vale
+        uses: errata-ai/vale-action@reviewdog
+        with:
+          separator: ","
+          fail_on_error: true
+          reporter: github-pr-annotations
