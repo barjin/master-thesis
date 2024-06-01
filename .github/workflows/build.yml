@@ -16,7 +16,8 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: ./en/thesis.tex
+          working_directory: ./en
+          root_file: ./thesis.tex
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/main'
