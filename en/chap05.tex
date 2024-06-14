@@ -174,27 +174,126 @@ This might lead to a lot of unnecessary data retrieval and processing and become
 
 \section{Benchmarks}
 
-To determine the performance of our proposed re-ranking solution, we establish a set of benchmarks to compare the results of the traditional tf-idf based search engine with the social network enhanced search engine.
+To determine the performance of our proposed re-ranking solution, we establish benchmarks to compare the results of the traditional tf-idf based search engine with the social network enhanced search engine.
 
-The common denominator for many of the ranking measuers is the \textit{user interaction} - the user is presented with the search results and picks the most relevant one or scores the 
-results based on the relevance to the query.
+The common denominator for many of the ranking measures - like discounted cumulative gain or mean reciprocal rank - is the \textit{user interaction}.
+The user is presented with the search results and picks the most relevant one or scores the results based on the relevance to the query.
 
 Unfortunately, this is not applicable to our case - while we are tracking the user interactions in the Charles Explorer web appplication, the amount of collected data is far too low to be statistically significant.
 
-\subsection{Acquiring gold standard data}
+\begin{mybox}{}
+    The following section is described in greater detail in my blog post \textit{Benchmarking Charles Explorer search result rankings}\footnote{\url{https://jindrich.bar/edu/thesis-blog/ranking-benchmarks/}}.
+    
+    The blog post contains the detailed description of the process of collecting the search queries for the benchmarking of the search results ranking in Charles Explorer.
 
-To establish a gold standard for the search results relevance (and by proxy the ranking), we do not have to rely on human interactions.
+    It also features reproducible code snippets used for the data collection and processing.
+\end{mybox}
+
+To establish a gold standard for the search results relevance, we do not have to rely solely on human interactions.
 
 Elsevier Scopus\footnote{https://www.elsevier.com/products/scopus} is a large academic database, which provides a search engine for the academic publications.
 Aside from the web application, it also provides a REST API for consuming the data programmatically.
 
-Clarivate's Web of Science\footnote{https://www.webofscience.com/} is another large academic database, providing a similar service as Scopus above.
+We can use the Scopus API to retrieve ranked lists of publications for a given query, and then use the ranking of the publications as the source of the ``global relevance'' for the search query in the benchmark.
+Simply put, by comparing the (ranking of the) search results in our search engine to the results of the Scopus search engine, we can determine the relevance of the search results.
 
-Since both of the applications are search engines for the academic publications, we can use their ranking and search results as the gold standard for our benchmarks.
+We are expecting the search results of the Scopus search engine to be more precise and relevant than the ones of the Charles Explorer search engine -
+Scopus is a commercial product with a large team of developers and researchers, while Charles Explorer is a small academic project.
+The data available to scopus also contain details about the citations of the publications and author profiles, which can be used to further improve the search results ranking.
 
-\section{Implementation details, performance}
+\subsection{Sampling the search query set}
 
-A section about the implementation details for the social network enhanced search within Charles Explorer. Can contain parts about the actual real-time performance (and discussion whether the added reranking value is worth the potential performance degradation).
+As the first step, we need to sample the \textit{search query set} for the benchmark. 
+Since we want to rule out possible biases - or at least mitigate their impact - we need a large and diverse enough set of queries to compare the search engines on.
 
-\dots
+Generating these manually would be time-consuming and error-prone. 
+Therefore, to solve this issue, we can use a \textit{wordnet} - a lexical language database of English.
+We can use it to generate a large set of diverse queries, perhaps less biased than a manually generated set.
 
+We start by selecting a set of \textit{seed words} - in our experimental case, those were the words \textit{``field of study''} and \textit{``medicine''}.
+Then, we traverse the wordnet to recursively find the hyponyms of those seed words, up to a certain depth.
+
+Running this process for the seed words \textit{``field of study''} and \textit{``medicine''} with the depth of 4, we get a set of \texttt{915} search queries.
+
+While this approach gives us a sizable set of queries, we have no guarantee of the quality of the queries - they might be too general or too specific, or not relevant to the academic domain at all.
+One of our goals was also to ensure the fairness of the query set - this is not guaranteed by the wordnet traversal either, as the queries might be too similar to each other (or target the similar topics in the publications).
+
+\subsubsection{Ensuring the query set fairness}
+
+While \textit{fairness} can be a largely subjective measure, we can let the available data guide us in this case.
+For the \textit{academic publications}, we have their \textit{titles}, \textit{abstracts}, \textit{keywords}, \textit{faculty affiliations} and \textit{authors} avaialble in our system.
+
+Since titles, abstracts and keywords are free text fields, we can omit them from our analysis - the preprocessing of the text data is a complex task on its own.
+Given the nature of our experiment - i.e. measuring the impact of using the social network data for the search results ranking - we have to leave the authorship information out as well.
+
+This process leaves us with the faculty affiliations.
+
+Charles University has \textit{17} faculties, each with a different focus and research areas.
+Each publication in our data is attributed to exactly one faculty.
+This allows us to use the faculty affiliations as a proxy for the fairness of the search queries.
+
+\textbf{Kullback-Leibler divergence}
+
+As the fairness measure, we can compare the distribution of the faculty affiliations in the search query results 
+to the distribution of the faculty affiliations of all the publications in the system.
+
+The standard way of comparing probability distributions is the \textit{Kullback-Leibler divergence} - a measure of how one probability distribution diverges from a second, expected probability distribution.
+
+For discrete probability distributions $P$ and $Q$ defined on the same sample space $\Omega$, the Kullback-Leibler divergence from $Q$ to $P$ is defined as
+
+$$
+D_{KL}(P||Q) = \sum_{\omega \in \Omega} P(\omega) \log \frac{P(\omega)}{Q(\omega)}
+$$
+
+The KL-divergence is always non-negative, and is zero if and only if $P$ and $Q$ are the same distribution.
+
+With the measure of the fairness of the search query set established, we can now proceed to the benchmarking of the search results ranking in Charles Explorer.
+
+By sampling up to 30 results for each search query from the Charles Explorer search engine, we acquire the faculty distribution for the entire search query set ($N = 915$).
+We can then compare this distribution to the distribution of the faculty affiliations of all the publications in the system.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.8\textwidth]{../img/all-queries-vs-totals.png}
+    \centering
+    \caption{Comparing the faculty distribution of the search query results \textit{(orange, right)} to the distribution of all the publications in the system \textit{(blue, left)}.}
+\end{figure}
+
+The Kullback-Leibler divergence of the faculty distribution of the \textbf{search query results} from the distribution of \textbf{all the publications} in the system is approximately \texttt{0.0471}.
+
+\textbf{Optimizing the KL-divergence}
+
+With the defined measure of the fairness of the search query set, we can now try to optimize it.
+In our case, optimizing the KL-divergence means \textit{finding a subset} of search queries which would minimize the divergence of the faculty distribution of the search query results from the distribution of all the publications in the system.
+
+Unfortunately, this poses serious challenges. 
+Finding a subset with an optimal aggregate property is a well-known NP-hard problem - often referred to as the \textit{0-1 knapsack problem} or the \textit{subset sum problem}.
+Even worse, we cannot simply reuse some of the existing algorithms for these problems, as those rely on the distributivity and associativity of the sum operation. 
+This is however not the case for the KL divergence.
+
+Similarly to the sum of the item values (in the Knapsack problem), the KL divergence is evaluated on the entire set, but unlike the sum, the items themselves do not have any “value” - and their contribution to the KL divergence changes depending on the other items in the set. 
+This leaves us with a limited choice of algorithms to solve the problem. 
+Because of the complexity of the problem and its smallish role in this work, we use a simple random search. 
+
+This approach works in two steps:
+
+\begin{enumerate}
+    \item Repeatedly sample a random subset of size $k$ of the search queries, keeping track of the subset with the lowest KL divergence.
+After a fixed number of iterations, take the subset with the lowest KL divergence.
+    \item From the $k$-sized subset, repeatedly remove the search query with the highest contribution to the divergence.
+Stop when the KL-divergence stops decreasing, i.e. we cannot remove any more search queries to decrease the divergence, or we've reached the minimum subset size $l$.
+\end{enumerate}
+
+This is a simple and computationally cheap approach, but it might not always find the optimal solution.
+Furthermore, since the KL-divergence is a non-convex function, the second step of the algorithm might get stuck in a suboptimal solution.
+While this could be mitigated using a more complex optimization algorithm (e.g. simulated annealing etc.), experimental results show that the simple random search is sufficient for our purposes.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.8\textwidth]{../img/all-queries-vs-totals-corrected.png}
+    \centering
+    \caption{Comparing the faculty distribution of the search query results \textit{(orange, right)} to the distribution of all the publications in the system \textit{(blue, left)} \textit{after running the optimization algorithm}.}
+\end{figure}
+
+Running the optimization algorithm with $n = 10000$ initial random samples of size $k = 300$ on the search query set, we arrive at a set of $174$ queries with the search result KL-divergence of \texttt{0.00317}. 
+This is a significant improvement over the original divergence of \texttt{0.0471} and we will consider this a fairer subset of the search queries for the benchmarking.
