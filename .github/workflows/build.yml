@@ -26,6 +26,7 @@ jobs:
         with:
           working_directory: ./en
           root_file: ./thesis.tex
+          texlive_version: 2021
 
       - name: Move PDF to a separate directory
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -55,6 +56,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Check if artifact exists
+        id: artifact
+        run: echo ::set-output name=exists::$(test -f ./dist/bar-social-network-analysis-in-academic-environment-2024.pdf && echo true || echo false)
+
       - name: Deploy to GitHub Pages
+        if: steps.artifact.outputs.exists == 'true'
         id: deployment
         uses: actions/deploy-pages@v2
