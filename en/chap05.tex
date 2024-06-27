@@ -277,6 +277,7 @@ Because of the complexity of the problem and its smallish role in this work, we 
 
 This approach works in two steps:
 
+%% todo pseudocode algorithm for the optimization
 \begin{enumerate}
     \item Repeatedly sample a random subset of size $k$ of the search queries, keeping track of the subset with the lowest KL divergence.
 After a fixed number of iterations, take the subset with the lowest KL divergence.
@@ -297,3 +298,50 @@ While this could be mitigated using a more complex optimization algorithm (e.g. 
 
 Running the optimization algorithm with $n = 10000$ initial random samples of size $k = 300$ on the search query set, we arrive at a set of $174$ queries with the search result KL-divergence of \texttt{0.00317}. 
 This is a significant improvement over the original divergence of \texttt{0.0471} and we will consider this a fairer subset of the search queries for the benchmarking.
+
+\subsection{Collecting the data}
+
+Since our proposed benchmark only evaluates the search results ranking, we can collect the search results for the benchmark queries in advance.
+Similarly, we can also collect the data from the Scopus API for the same queries, as the automated relevance feedback.
+
+While collecting the search results from the Charles Explorer search engine is straightforward since the API is available to us, 
+%% todo finish this sentence
+the Scopus Advanced search feature requires us to use a special query language\footnote{\url{https://schema.elsevier.com/dtds/document/bkapi/search/SCOPUSSearchTips.htm}} to submit the search queries. 
+This query language offers a set of Prolog-like functors, 
+each related to a specific field - or a set of fields - of the publication record. 
+The attributes of these functors are used in a \textit{substring search} on the specified fields.
+
+Apart from this, the query language also supports logical operators, such as \texttt{AND}, \texttt{OR}, and \texttt{AND NOT}.
+
+We will use two of the available functors: \texttt{TITLE-ABS-KEY} and \texttt{AF-ID}:
+
+\begin{itemize}
+    \item \texttt{TITLE-ABS-KEY} searches for the specified substring in the title, abstract, and keywords of the publication record. 
+    In this regard, it is similar to the full-text search in Charles Explorer, which searches in the same fields.
+    \item \texttt{AF-ID} filters the search results by the organisation affiliation of the publication. This is useful for filtering the search results to only those publications where at least one of the authors is affiliated with Charles University. Since Elsevier Scopus contains many records not affiliated with Charles University (but Charles Explorer only contains such records), this will help us to get a more comparable sets of search results.
+\end{itemize}
+
+By calling the Scopus API, we get the search results in JSON format, which we can then process and store in our database for the benchmarking.
+
+\begin{figure}[ht!]
+        \scriptsize
+        \centering
+        \begin{tabular}{|l|l|l|l|l|l|l|}
+        \hline
+            ~ & ranking & totalAuthors & scopusId & pubYear & citationCount & referenceCount \\ \hline
+            ranking & 1.000000 & 0.038005 & 0.081229 & 0.109848 & 0.062467 & 0.053487 \\ \hline
+            totalAuthors & 0.038005 & 1.000000 & 0.033948 & 0.040538 & 0.113336 & 0.094358 \\ \hline
+            scopusId & 0.081229 & 0.033948 & 1.000000 & 0.806411 & 0.015393 & 0.243830 \\ \hline
+            pubYear & 0.109848 & 0.040538 & 0.806411 & 1.000000 & 0.033019 & 0.283521 \\ \hline
+            citationCount & 0.062467 & 0.113336 & 0.015393 & 0.033019 & 1.000000 & 0.218415 \\ \hline
+            referenceCount & 0.053487 & 0.094358 & 0.243830 & 0.283521 & 0.218415 & 1.000000 \\ \hline
+        \end{tabular}
+    \caption{Correlation matrix of the Elsevier Scopus search results numeric attributes.} 
+\end{figure}
+
+We can see that the \texttt{ranking} column - the position of a publication in the search results - is only very weakly correlated with the other numeric attributes of the search results.
+This suggests that the default Scopus ranking is mostly influenced by the full-text search and does not take much reranking into account.
+
+It also suggest that the Scopus result ranking might not be too dependent on the social network measures and that we might see not be able to improve the ranking by using the social network data (as the ``explicit'' social network data like the citation count or the reference count are not correlated with the ranking).
+
+%% todo mention the social network data and citations / references
