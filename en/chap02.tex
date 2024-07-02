@@ -1,73 +1,233 @@
 \chapter{Data models and transformations}
 
-This chapter talks about the way the format we receive the data in (a relational database) and the differences between a relational and a graph model. In the following sections, we figure out how to effectively transform the relational data into a social network and what additional information does the transformed model tell us about the data (and how to get/calculate the information, again, effectively).  
+The data about the academic researchers and their publications at CUNI is internally stored in a relational database. 
+The first chapter of this thesis explores the transformation of the relational data model into a graph data model, 
+which will allow us to use the graph algorithms for the social network analysis.
 
-\dots
+We also address pitfalls and challenges of the transformation stemming 
+from the specific nature of the data and the technical limitations of the source systems.
 
-\section{Relational vs. graph model}
+\section{Input data format}
 
-A short theoretical section about the differences between the two different data models.
+The Charles University information system is composed of a set of separate systems and applications.
 
-\dots
+The \textit{Studium} information system\footnote{Available at \url{https://is.cuni.cz/studium/}.} contains the data about the researchers, teachers, the courses and study programmes available at the university.
+
+The \textit{Věda} information system\footnote{Available at \url{https://is.cuni.cz/veda/}, login only.} aggregates the data about creative activities of the researchers, the research projects and inter-university mobility programmes.
+For the purpose of this thesis, we are mostly interested in the OBD (or Verso) module, containing the data about the academic publications.
+
+The \textit{Whois} staff information system\footnote{Available at \url{https://is.cuni.cz/webapps/whois2}.} contains the data about the employees of the university, 
+their affiliations with the faculties and departments and their academic titles.
+
+While none of the systems offer public APIs, a data import pipeline has been set up by the university's IT department (ÚVT) in advance
+for the purpose of the Charles Explorer application. 
+This pipeline consists of a set of database views tracking the changes in the data and a script\footnote{\url{https://gitlab.mff.cuni.cz/barj/charles-explorer/-/blob/master/scripts/export.sh}} that exports the data to an SQLite database.
+
+\newpage
+
+\subsection{Exploring the schema}
+
+To illustrate the structure of the data, we provide an example of the schema of the relational database together with example data.
+Since this thesis focuses on the social network between the academic researchers and their publications, we limit this example only on the relevant parts of the schema.
+
+The social network-relevant data accessible in the following three database views:
+
+\begin{Verbatim}[commandchars=\\\{\}]
+PERSON (
+    \verbun{\verbbf{PERSON_ID}}, \verbxs{- UKČO personal number}
+    PERSON_NAME, \verbxs{- Full name of the person, incl. the academic titles}
+    PERSON_WEBSITE, \verbxs{- Personal website of the person}
+    \verbun{\verbbf{PERSON_WHOIS_ID}}, \verbxs{- ID of the person in the Whois system}
+    TYPE \verbxs{- Person type - teacher(U), external employee(E), or other(O)}
+)
+\end{Verbatim}
+
+The \texttt{Person} view contains the data about the academic researchers and teachers at the university.
+While the \texttt{TYPE} column might suggest that the table contains records about external people as well (e.g. guest co-authors of publications published by the CUNI researchers),
+it only contains the data about the people affiliated with the university. The \texttt{TYPE} column is only used to distinguish between the different employment types at the university.
+
+\begin{Verbatim}[commandchars=\\\{\}]
+PUBLICATION_KEYWORDS (
+    \verbun{\verbbf{PUBLICATION_ID}}, \verbxs{- internal ID of the publication}
+    PUB_YEAR, \verbxs{- year of the publication}
+    TITLE, \verbxs{- title of the publication}
+    ABSTRACT, \verbxs{- abstract of the publication}
+    KEYWORDS, \verbxs{- keywords of the publication}
+    LANGUAGUE\verbxs{(sic!)}, \verbxs{- ISO 639-2 language code of the TITLE,}
+                              \verbxs{ABSTRACT and KEYWORD columns}
+    ORIGINAL\verbxs{ - whether the LANGUAGUE column is the original}
+                               \verbxs{language of the publication}
+)
+\end{Verbatim}
+
+This schema shows some more issues with the data - the \texttt{PUBLICATION\_KEYWORDS} is missing a single primary key attribute,
+as the \texttt{PUBLICATION\_ID} is not unique across the table. This is because the same publication can have multiple records in the table,
+each record representing a different language version of the title, abstract and keywords.
+
+Moreover, the \texttt{PUBLICATION\_KEYWORDS} view does not contain an universally accepted publication identifier (e.g. a DOI or an ISBN) 
+that would allow us to link the publication to the external sources of the publication data.
+This is because of a technical limitation of the information systems, as the \textit{OBD} module is not fully interoperable with the \textit{Studium} module we are 
+consuming the data from.
+
+\newpage
+
+\label{sec:pub-author-all}
+\begin{Verbatim}[commandchars=\\\{\}]
+PUBLICATION_AUTHOR_ALL (
+    \verbun{PUBLICATION_ID}, \verbxs{- internal ID of the publication}
+    \verbun{PERSON_ID}, \verbxs{- UKČO personal number of the author, if available}
+    PERSON_NAME, \verbxs{- Full name of the author, incl. the academic titles}
+)
+\end{Verbatim}
+
+The relational database view \texttt{PUBLICATION\_AUTHOR\_ALL} contains the links between the publications and the authors from the previous views.
+
+With the most naive approach, the transformation of the relational data model into a graph data model could be done by transforming the records of the 
+\texttt{PERSON} and (deduplicated) \texttt{PUBLICATION\_KEYWORDS} views into the nodes of the graph, 
+and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of the graph.
 
 \section{Transformation}
 
-A section about the details of the relational - graph transformation, the way the graph is stored (and reasons why - with respect to the operations we want to run on the data).
+In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the UKČO personal number is not always available.
+This is because of external authors, who are not affiliated with the university and do not have a UKČO personal number.
+What is worse, such authors are only identified by their name and academic titles, which can be inconsistent across the publications.
+This is again caused by the technical limitations of the source systems, as the interoperability between the \textit{OBD} and \textit{Studium} modules is limited.
 
-\dots
+This poses a challenge for the transformation of the relational data model into a graph data model, as we need to come up 
+with a way to identify the external authors and link them to the publications.
 
-\section{Processing available data}
+\subsection{Inferring missing identities}
 
-\subsection{Categorizing publications}
+As mentioned above, the available relational data model is unfit for a direct transformation into a graph data model.
+This is because the data about the external authors is incomplete and inconsistent, which might cause some of the authors
+to be represented by multiple nodes in the graph.
 
-This section talks about analyzing the publication data using different NLP techniques and categorizing them into both predefined and inferred categories using classic algorithms (for example K-means and the alternatives) and ML approaches (Bayesian topic modelling using LDA).
+Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
+this also poses a challenge for the social network analysis, as the graph algorithms might not be able 
+to correctly identify the external authors.
 
-This is a part of the data mining done on the data for enhancing the graph data model. As of now, the publication data is rather opaque with only the publication identificators, relations to people and text annotations in natural languages. Through the related people, there are also transitive relations to other publications, which most likely share the topic with the original publication. This is also taken as a benchmark data for the NLP-powered categorization tasks.
+In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the relations mentioning the authors with / without the UKČO personal number are as follows:
 
-\subsubsection{Wordnet}
+\begin{figure}[!ht]
+    \captionsetup{width=.9\linewidth}
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+        Type & Count & Distinct \\ \hline
+        PERSON\_ID present & 808467 & 39523 \\ \hline
+        No PERSON\_ID & 671332 & ? \\ \hline
+    \end{tabular}
+    \caption{Counts of the relations in the \texttt{PUBLICATION\_AUTHOR\_ALL} view.}
+\end{figure}
 
-\subsubsection{Embedding with count-based techniques (TF-IDF, GloVe)}
+We see that the no-identifier authors take up to 45\% of the total count of the relations.
+This explains the importance of the problem of inferring the missing identities.
 
-\subsubsection{LLM based embeddings}
+\subsubsection{Naïve approach}
 
-\subsection{Clustering the data}
+The naïve solution to this problem is using the \textit{names} for the identity inference 
+in case of missing identifiers.
+While this is a simple and straightforward transformation, it has obvious drawbacks.
 
-\subsubsection{LDA topic modelling}
+Firstly, the names are not guaranteed to be \textit{unique} across the dataset. 
 
-\subsubsection{K-means with other embeddings}
+Secondly, the names are not guaranteed to be \textit{consistent} across the dataset - due to name changes (e.g. marital), 
+typos, or different conventions in the academic titles.
+See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBLICATION\_AUTHOR\_ALL} view:
 
-\section{Inferring missing data}
+\begin{figure}[!ht]\label{fig:jaroslav-peska}
+    \captionsetup{width=.9\linewidth}
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+        COUNT(*) & PERSON\_NAME & PERSON\_ID \\ \hline
+        2 & doc. PhDr. Jaroslav Peška Ph.D. & 14124313\dots \footnotemark \\ \hline
+        5 & doc. PhDr. Jaroslav Peška Ph.D. & null \\ \hline
+        2 & Doc. PhDr. Jaroslav Peška Ph.D. & null \\ \hline
+        1 & doc. PhDr. Jaroslav Peška PhD. & null \\ \hline
+        4 & Jaroslav Peška & null \\ \hline
+    \end{tabular}
+    \caption{Search for the name ``Jaroslav Peška'' in the \texttt{PUBLICATION\_AUTHOR\_ALL} view.}
+\end{figure}
 
-This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
+\footnotetext{PERSON\_ID redacted for privacy reasons, replaced by truncated PERSON\_WHOIS\_ID.}
 
-\subsection{Infering identities from the social network}
+While there are 5 variants of the same name in the dataset, only one of them is correctly linked to the UKČO personal number.
+This could have been caused by human error on data input or by the limitations of the source systems. 
+Either way, this creates an unrecoverable loss of information in the dataset.
 
-Search for Jaroslav Peška yields the following results:
+In the SQL database export, we can ``merge'' the records using the naïve approach efficiently using a many-to-one (non-injective) mapping
+on the \texttt{PERSON\_NAME} column.
+
+Let us define a function $f$:
+$$f: \text{PERSON\_NAME} \to \text{NORMALIZED\_NAME}$$
+
+We require $f$ to map all person names to a \textit{normalized form}, which is defined as follows:
 \begin{itemize}
-    \item doc. PhDr. Jaroslav Peška Ph.D. - 77815713
-    \item doc. PhDr. Jaroslav Peška Ph.D. - null
-    \item Jaroslav Peška - null
-    \item Doc. PhDr. Jaroslav Peška Ph.D. - null
-    \item doc. PhDr. Jaroslav Peška PhD. - null
+    \item The academic titles are stripped from the name.
+    \item The name is converted to lowercase.
+    \item The name is stripped of any diacritics.
+    \item The name is stripped of any non-alphabetic characters.
+    \item The whitespace characters are normalized to a single space.
+    \item The name is stripped of any leading or trailing whitespace.
 \end{itemize}
 
-Another example is the search for Dmytro Yu Balakin, which yields the following results:
+We can see that in the case of \hyperref[fig:jaroslav-peska]{Jaroslav Peška}, 
+the normalized version for all the variants is the same (i.e. $f(\texttt{PERSON\_NAME}) = \texttt{jaroslav peska}$)
+and the records have been effectively merged.
 
-\begin{itemize}
-    \item Dmytro Yu Balakin
-    \item Dmytro Yu Batakin
-    \item Dmytro Yu. Balakin.
-\end{itemize}
+% \section{Processing available data}
 
-It is clear that most of those are likely the same person, but the data is not consistent. The first one is the correct one, but the other ones are missing the academic titles and the ``doc.'' prefix. The ``PhD.'' suffix is also inconsistent - sometimes it is ``PhD.'', sometimes ``Ph.D.''. The ``doc.'' prefix is also sometimes missing.
+% \subsection{Categorizing publications}
 
-...
-...
+% This section talks about analyzing the publication data using different NLP techniques and categorizing them into both predefined and inferred categories using classic algorithms (for example K-means and the alternatives) and ML approaches (Bayesian topic modelling using LDA).
 
-While it might be tempting to solve this "online" by visually merging the entities in the application's visualization layer, this causes multiple issues. The obvious one are the performance implications 
+% This is a part of the data mining done on the data for enhancing the graph data model. As of now, the publication data is rather opaque with only the publication identificators, relations to people and text annotations in natural languages. Through the related people, there are also transitive relations to other publications, which most likely share the topic with the original publication. This is also taken as a benchmark data for the NLP-powered categorization tasks.
 
-\section{Analyzing the social network}
+% \subsubsection{Wordnet}
 
-The first contact with the network, description of some basic properties, discovering the features of the data and trying to mine some non-obvious relations from the data.
+% \subsubsection{Embedding with count-based techniques (TF-IDF, GloVe)}
 
-\dots
+% \subsubsection{LLM based embeddings}
+
+% \subsection{Clustering the data}
+
+% \subsubsection{LDA topic modelling}
+
+% \subsubsection{K-means with other embeddings}
+
+% \section{Inferring missing data}
+
+% This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
+
+% \subsection{Infering identities from the social network}
+
+% Search for Jaroslav Peška yields the following results:
+% \begin{itemize}
+%     \item doc. PhDr. Jaroslav Peška Ph.D. - 77815713
+%     \item doc. PhDr. Jaroslav Peška Ph.D. - null
+%     \item Jaroslav Peška - null
+%     \item Doc. PhDr. Jaroslav Peška Ph.D. - null
+%     \item doc. PhDr. Jaroslav Peška PhD. - null
+% \end{itemize}
+
+% Another example is the search for Dmytro Yu Balakin, which yields the following results:
+
+% \begin{itemize}
+%     \item Dmytro Yu Balakin
+%     \item Dmytro Yu Batakin
+%     \item Dmytro Yu. Balakin.
+% \end{itemize}
+
+% It is clear that most of those are likely the same person, but the data is not consistent. The first one is the correct one, but the other ones are missing the academic titles and the ``doc.'' prefix. The ``PhD.'' suffix is also inconsistent - sometimes it is ``PhD.'', sometimes ``Ph.D.''. The ``doc.'' prefix is also sometimes missing.
+
+% ...
+% ...
+
+% While it might be tempting to solve this "online" by visually merging the entities in the application's visualization layer, this causes multiple issues. The obvious one are the performance implications 
+
+% \section{Analyzing the social network}
+
+% The first contact with the network, description of some basic properties, discovering the features of the data and trying to mine some non-obvious relations from the data.
+
+% \dots

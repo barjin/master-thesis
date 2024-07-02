@@ -54,6 +54,12 @@
 \usepackage{caption}		% caption formatting
 \usepackage[T1]{fontenc}	% font encoding
 \usepackage[most]{tcolorbox}
+\usepackage{fancyvrb}
+
+\newcommand\verbbf[1]{\textbf{#1}}
+\newcommand\verbun[1]{\underline{#1}}
+\newcommand\verbit[1]{\textit{#1}}
+\newcommand\verbxs[1]{\small{\small{#1}}}
 
 \tcbuselibrary{skins,breakable}
 \newtcolorbox{mybox}[2][]{breakable,sharp corners, skin=enhancedmiddle jigsaw,parbox=false,
