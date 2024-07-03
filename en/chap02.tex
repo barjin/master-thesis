@@ -115,7 +115,7 @@ In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the rela
     \hline
         Type & Count & Distinct \\ \hline
         PERSON\_ID present & 808467 & 39523 \\ \hline
-        No PERSON\_ID & 671332 & ? \\ \hline
+        PERSON\_ID missing & 671332 & ? \\ \hline
     \end{tabular}
     \caption{Counts of the relations in the \texttt{PUBLICATION\_AUTHOR\_ALL} view.}
 \end{figure}
@@ -173,43 +173,117 @@ We require $f$ to map all person names to a \textit{normalized form}, which is d
 \end{itemize}
 
 We can see that in the case of \hyperref[fig:jaroslav-peska]{Jaroslav Peška}, 
-the normalized version for all the variants is the same (i.e. $f(\texttt{PERSON\_NAME}) = \texttt{jaroslav peska}$)
-and the records have been effectively merged.
+the normalized version for all the variants is the same (i.e. $f(\texttt{PERSON\_NAME}) = \texttt{jaroslav peska}$).
 
-% \section{Processing available data}
+If we decide to add the output of this normalization function as an attribute in the \texttt{PUBLICATION\_AUTHOR\_ALL} view,
+we can proceed with the merging of the records using SQL GROUP BY and the aggregation functions.
 
-% \subsection{Categorizing publications}
+% \label{infobox:sqlite-loadable-extensions}
+\begin{mybox}
+    {SQLite Loadable Extensions}
 
-% This section talks about analyzing the publication data using different NLP techniques and categorizing them into both predefined and inferred categories using classic algorithms (for example K-means and the alternatives) and ML approaches (Bayesian topic modelling using LDA).
+    While it would be possible to implement the normalization function using inbuilt scalar SQLite functions (namely \texttt{lower}, \texttt{trim},
+    and repeated use of \texttt{replace}), the developer experience of such solution is suboptimal, as it requires a lot of nested function calls
+    in the \texttt{SELECT} clause.
 
-% This is a part of the data mining done on the data for enhancing the graph data model. As of now, the publication data is rather opaque with only the publication identificators, relations to people and text annotations in natural languages. Through the related people, there are also transitive relations to other publications, which most likely share the topic with the original publication. This is also taken as a benchmark data for the NLP-powered categorization tasks.
+    Because the way the scalar functions are defined in SQLite - and their implementation\footnote{\url{https://sqlite.org/src/file?name=src/func.c}}, 
+    the repeated calls to \texttt{replace} also result in repeated string allocations and deallocations - which can be a performance bottleneck.
 
-% \subsubsection{Wordnet}
+    Fortunately, SQLite allows the user to define their own loadable extensions\footnote{\url{https://www.sqlite.org/loadext.html}} in C.
+    This allows us to define the normalization function in C and load it as a scalar function in the SQLite database.
+\end{mybox}
 
-% \subsubsection{Embedding with count-based techniques (TF-IDF, GloVe)}
+\textbf{Implementation}
 
-% \subsubsection{LLM based embeddings}
+For the implemetation of the name normalization function, we use the SQLite loadable extensions mechanism.
+The string transformation itself is done in three steps:
 
-% \subsection{Clustering the data}
+\begin{enumerate}
+    \item Using the \texttt{glib} function \texttt{g\_utf8\_normalize}, the string representation of the name is normalized to the canonical Unicode NFD form.
+    This performs the Unicode decomposition of the diacritized letters and other characters. This step ensures that the byte representation of diacritized 
+    characters is now composed of separate characters for the base character and the diacritics (e.g. \texttt{ě}\texttt{(U+011B)} is decomposed to \texttt{e}\texttt{(U+0065)} and \texttt{ˇ}\texttt{(U+02C7)}).
+    \item We scan the normalized string and remove all the characters that are not in the range of the Latin alphabet. We convert the all the 
+    alphabetic characters to lowercase and replace all the whitespace characters with a single space.
+    \item Using regular expressions, we remove the academic titles from the name. 
+    We construct the expression by defining a list of the academic titles and concatenating them using the alternative separator \texttt{|} (e.g. \texttt{PhDr.|Ph.D.}).
+    We then use the constructed regular expression to find the start index of the actual person name in the normalized string
+    and use the \texttt{glib} function \texttt{g\_strndup} to extract the substring.
+\end{enumerate}
 
-% \subsubsection{LDA topic modelling}
+The full implementation of the normalization function is available in the GitHub repository of this thesis\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-name}}.
 
-% \subsubsection{K-means with other embeddings}
+\newpage
+
+\textbf{Performance}
+
+As mentioned in the infobox above, the SQLite extension for normalizing the names should provide a performance improvement over the composed scalar functions.
+To test this hypothesis, we repeatedly construct a temporary table with the normalized names using the both scalar functions and the extension.
+
+\begin{figure}[!ht]
+\begin{verbatim}
+CREATE TABLE test AS 
+    SELECT normalize_name(PERSON_NAME) -- or the scalar functions
+        AS NORMALIZED 
+    FROM PUBLICATION_AUTHOR_ALL;
+\end{verbatim}
+\captionsetup{width=.9\linewidth}
+\caption{The SQL query for the performance test of different normalization methods.}
+
+\end{figure}
+
+SQLite engine has a default limit on the maximum expression tree depth of 1000\footnote{\url{https://www.sqlite.org/limits.html\#max_expr_depth}}.
+This is relatively easy to hit with the composed scalar functions, as the repeated nested calls to the \texttt{replace} function can quickly add up.
+
+Because of this limitation, we are not replacing all of the academic titles in the composed scalar functions case of the experiment.
+Even with the reduced number of operations, the composed scalar functions seem to be much slower than the SQLite extension:
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=\textwidth]{../img/sqlite_vs_native_scalar_functions.png}
+    \centering
+    \caption{The performance comparison of the SQLite extension and the composed scalar functions (mean over 10 runs).}
+\end{figure}
+
+After the normalization and aggregating the records using the normalized names,
+we get \texttt{240001} distinct normalized names in the dataset.
+
+% todo factcheck
+The most frequent external author was \textit{B. Abbott} with $1339$ records, followed by $J. Smith$ with $1178$ records.
+This raises concerns about the uniqueness of the normalized names - as with $1339$ coauthored publications, \textit{B. Abbott} would be the 99.9 percentile (or the top 7th author),
+compared to the internal authors with known identifiers.
+
+\textbf{Issues with the naïve approach}
+
+While the naïve approach is simple and straightforward, it also has logical drawbacks.
+
+In the current state, there is no support for the existing identifiers from the dataset.
+By only inferring the identifier from the name, we willingly discard the existing information about the person.
+
+This could be partially solved by concatenating the inferred identifier with the existing one. 
+However, such approach would only fully work in the case of the external authors.
+In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
+this would still result in the creation of multiple nodes for the same person (e.g. \texttt{14124313-jaroslav-peska} and \texttt{null-jaroslav-peska}).
+
+\subsubsection{(Distance-based) hierarchical clustering}
+
+To solve the issues of the naïve approach, we can try to use the graph structure of the data to infer the missing identities.
+One of the possible approaches is to use the \textit{hierarchical clustering} methods to group the nodes with similar attributes together.
+
+\subsubsection{Embedding-based clustering}
+
+Another approach to the problem of inferring the missing identities is to use the \textit{embedding-based clustering} methods.
+
+The idea behind the embedding-based clustering is to project the nodes of the graph into a lower-dimensional space, where the nodes with similar attributes are close together.
+
+The graph database Memgraph\footnote{\url{https://memgraph.com/}} offers a built-in implementation of the \textit{node2vec} algorithm\footnote{\url{https://snap.stanford.edu/node2vec/}}.
+We can use this to project the nodes of the graph into a 2D space and then use the clustering algorithms to group the nodes with similar attributes (and same normalized names) together.
+
 
 % \section{Inferring missing data}
 
 % This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
 
 % \subsection{Infering identities from the social network}
-
-% Search for Jaroslav Peška yields the following results:
-% \begin{itemize}
-%     \item doc. PhDr. Jaroslav Peška Ph.D. - 77815713
-%     \item doc. PhDr. Jaroslav Peška Ph.D. - null
-%     \item Jaroslav Peška - null
-%     \item Doc. PhDr. Jaroslav Peška Ph.D. - null
-%     \item doc. PhDr. Jaroslav Peška PhD. - null
-% \end{itemize}
 
 % Another example is the search for Dmytro Yu Balakin, which yields the following results:
 
