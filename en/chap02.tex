@@ -86,21 +86,12 @@ With the most naive approach, the transformation of the relational data model in
 \texttt{PERSON} and (deduplicated) \texttt{PUBLICATION\_KEYWORDS} views into the nodes of the graph, 
 and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of the graph.
 
-\section{Transformation}
+\section{Inferring missing identities}
 
 In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the UKČO personal number is not always available.
 This is because of external authors, who are not affiliated with the university and do not have a UKČO personal number.
 What is worse, such authors are only identified by their name and academic titles, which can be inconsistent across the publications.
 This is again caused by the technical limitations of the source systems, as the interoperability between the \textit{OBD} and \textit{Studium} modules is limited.
-
-This poses a challenge for the transformation of the relational data model into a graph data model, as we need to come up 
-with a way to identify the external authors and link them to the publications.
-
-\subsection{Inferring missing identities}
-
-As mentioned above, the available relational data model is unfit for a direct transformation into a graph data model.
-This is because the data about the external authors is incomplete and inconsistent, which might cause some of the authors
-to be represented by multiple nodes in the graph.
 
 Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
 this also poses a challenge for the social network analysis, as the graph algorithms might not be able 
@@ -123,7 +114,9 @@ In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the rela
 We see that the no-identifier authors take up to 45\% of the total count of the relations.
 This explains the importance of the problem of inferring the missing identities.
 
-\subsubsection{Naïve approach}
+\newpage
+
+\subsection{Naïve approach}\label{sec:naive-approach}
 
 The naïve solution to this problem is using the \textit{names} for the identity inference 
 in case of missing identifiers.
@@ -196,23 +189,24 @@ we can proceed with the merging of the records using SQL GROUP BY and the aggreg
 \textbf{Implementation}
 
 For the implemetation of the name normalization function, we use the SQLite loadable extensions mechanism.
-The string transformation itself is done in three steps:
+The transformation itself is done in three steps:
 
 \begin{enumerate}
     \item Using the \texttt{glib} function \texttt{g\_utf8\_normalize}, the string representation of the name is normalized to the canonical Unicode NFD form.
-    This performs the Unicode decomposition of the diacritized letters and other characters. This step ensures that the byte representation of diacritized 
-    characters is now composed of separate characters for the base character and the diacritics (e.g. \texttt{ě}\texttt{(U+011B)} is decomposed to \texttt{e}\texttt{(U+0065)} and \texttt{ˇ}\texttt{(U+02C7)}).
+    This step ensures that the byte representation of diacritized characters is now composed of separate characters for the base character and the diacritics (e.g. \texttt{ě}\texttt{(U+011B)} is decomposed to \texttt{e}\texttt{(U+0065)} and \texttt{ˇ}\texttt{(U+02C7)}).
     \item We scan the normalized string and remove all the characters that are not in the range of the Latin alphabet. We convert the all the 
     alphabetic characters to lowercase and replace all the whitespace characters with a single space.
     \item Using regular expressions, we remove the academic titles from the name. 
     We construct the expression by defining a list of the academic titles and concatenating them using the alternative separator \texttt{|} (e.g. \texttt{PhDr.|Ph.D.}).
-    We then use the constructed regular expression to find the start index of the actual person name in the normalized string
+    We then use this regex to find the start index of the actual person name in the string
     and use the \texttt{glib} function \texttt{g\_strndup} to extract the substring.
 \end{enumerate}
 
-The full implementation of the normalization function is available in the GitHub repository of this thesis\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-name}}.
+The full implementation of the normalization function is available in the GitHub repository of this thesis.\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-ext}}.
 
-\newpage
+For reference purposes, we also implement the same normalization function using Python.
+This implementation loads the data from the database, normalizes the names using a Python function, and writes the normalized names into a new table.
+The implementation can also be found in the GitHub repository\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-python}}.
 
 \textbf{Performance}
 
@@ -232,9 +226,9 @@ CREATE TABLE test AS
 \end{figure}
 
 SQLite engine has a default limit on the maximum expression tree depth of 1000\footnote{\url{https://www.sqlite.org/limits.html\#max_expr_depth}}.
-This is relatively easy to hit with the composed scalar functions, as the repeated nested calls to the \texttt{replace} function can quickly add up.
+This limit is quite low and can be easily reached when using the composed scalar functions.
 
-Because of this limitation, we are not replacing all of the academic titles in the composed scalar functions case of the experiment.
+Because of this limitation, we are not replacing all of the academic titles in the \textit{composed scalar functions} case of the experiment.
 Even with the reduced number of operations, the composed scalar functions seem to be much slower than the SQLite extension:
 
 \begin{figure}[ht!]
@@ -243,6 +237,11 @@ Even with the reduced number of operations, the composed scalar functions seem t
     \centering
     \caption{The performance comparison of the SQLite extension and the composed scalar functions (mean over 10 runs).}
 \end{figure}
+
+The Python reference implementation is expectedly much slower than both the SQLite extension and the composed scalar functions.
+This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - as compared to the native data access of the SQLite extension.
+
+\textbf{Results assessment}\label{sec:results-assessment}
 
 After the normalization and aggregating the records using the normalized names,
 we get \texttt{240001} distinct normalized names in the dataset.
@@ -254,29 +253,73 @@ compared to the internal authors with known identifiers.
 
 \textbf{Issues with the naïve approach}
 
-While the naïve approach is simple and straightforward, it also has logical drawbacks.
+While the naïve approach is simple and straightforward, it poses several issues.
 
-In the current state, there is no support for the existing identifiers from the dataset.
+Firstly, name-based merging can be problematic in the case of the authors with common names, as likely seen in the \hyperref[sec:results-assessment]{results assessment}.
+
+Secondly, there is no support for the existing identifiers from the dataset.
 By only inferring the identifier from the name, we willingly discard the existing information about the person.
 
-This could be partially solved by concatenating the inferred identifier with the existing one. 
-However, such approach would only fully work in the case of the external authors.
-In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
-this would still result in the creation of multiple nodes for the same person (e.g. \texttt{14124313-jaroslav-peska} and \texttt{null-jaroslav-peska}).
+This could be partially solved by coalescing the inferred identifiers with the existing ones.
+Using the SQL \texttt{COALESCE} function, we can create a new column in the \texttt{PUBLICATION\_AUTHOR\_ALL} view that would contain the inferred identifier only if the original one is missing.
 
-\subsubsection{(Distance-based) hierarchical clustering}
+However, such approach would only fully work in the case of only internal - or only external authors.
+In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
+this would still result in the creation of up to two nodes for the same person (i.e. \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
+
+\begin{mybox}{``On-demand'' naïve identity inference}
+
+To solve the over-merging issue of the authors with common names in the naïve approach, we can slightly modify it.
+
+Instead of merging the records directly in the database, we can merge the records on-demand in the application's visualization layer.
+If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
+we can reuse the naïve approach quite effectively.
+
+By restricting the domain of the mergeable records to a smaller, tighter subcomunity of the graph (i.e. collaborators of one internal author), 
+we can reduce the number of the possible false positives in the merging.
+
+Obviously, this approach still carries the risk of the false positives in case of different external authors with the same name in the same subcommunity.
+
+Also note that this approach only improves the user experience with the application.
+Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
+\end{mybox}
+
+
+\subsection{Distance-based hierarchical clustering}
 
 To solve the issues of the naïve approach, we can try to use the graph structure of the data to infer the missing identities.
 One of the possible approaches is to use the \textit{hierarchical clustering} methods to group the nodes with similar attributes together.
 
-\subsubsection{Embedding-based clustering}
+In the realm of data mining and statistics, \textit{hierarchical clustering} is an umbrella term for a set of unsupervised learning algorithms for grouping
+given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In case of top-down clustering, the process is reversed.}
+The distance metric used for the clustering can be any metric that defines the similarity between the data points.
 
-Another approach to the problem of inferring the missing identities is to use the \textit{embedding-based clustering} methods.
+In the case of our dataset, we can use the shortest path distance between the nodes in the graph as the distance metric.
 
-The idea behind the embedding-based clustering is to project the nodes of the graph into a lower-dimensional space, where the nodes with similar attributes are close together.
+We define the merging process as follows:
 
-The graph database Memgraph\footnote{\url{https://memgraph.com/}} offers a built-in implementation of the \textit{node2vec} algorithm\footnote{\url{https://snap.stanford.edu/node2vec/}}.
-We can use this to project the nodes of the graph into a 2D space and then use the clustering algorithms to group the nodes with similar attributes (and same normalized names) together.
+\begin{enumerate}
+    \item Start with a graph with nodes only merged based on explicit identifiers. \texttt{PUBLICATION\_AUTHOR\_ALL} records without an explicit identifier are represented as separate nodes.
+    \item Select an arbitrary unmerged node without an identifier.
+    \begin{itemize}
+        \item Using the \hyperref[sec:naive-approach]{naïve approach}, we find all merge candidates for the selected node. Note that we are using the normalized name equality as the requirement for the merge.
+        \item We calculate the distance matrix between the selected node and all the merge candidates.
+        \item Using a hierarchical clustering algorithm, we cluster the data points based on the distance matrix. We select the cut-off distance based on the distance distribution.
+    \end{itemize}
+    \item Go to step 2 until all the non-identifier nodes are merged.
+\end{enumerate}
+
+
+% \newpage
+
+% \subsubsection{Embedding-based clustering}
+
+% Another approach to the problem of inferring the missing identities is to use the \textit{embedding-based clustering} methods.
+
+% The idea behind the embedding-based clustering is to project the nodes of the graph into a lower-dimensional space, where the nodes with similar attributes are close together.
+
+% The graph database Memgraph\footnote{\url{https://memgraph.com/}} offers a built-in implementation of the \textit{node2vec} algorithm\footnote{\url{https://snap.stanford.edu/node2vec/}}.
+% We can use this to project the nodes of the graph into a 2D space and then use the clustering algorithms to group the nodes with similar attributes (and same normalized names) together.
 
 
 % \section{Inferring missing data}

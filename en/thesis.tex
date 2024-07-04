@@ -55,6 +55,7 @@
 \usepackage[T1]{fontenc}	% font encoding
 \usepackage[most]{tcolorbox}
 \usepackage{fancyvrb}
+\usepackage{relsize}
 
 \newcommand\verbbf[1]{\textbf{#1}}
 \newcommand\verbun[1]{\underline{#1}}
@@ -127,6 +128,8 @@ In the conclusion we address some issues we've encountered during the developmen
 % Title page and various mandatory informational pages
 \begin{document}
 \include{title}
+
+\renewcommand*{\UrlFont}{\smaller\relax}
 
 %%% A page with automatically generated table of contents of the master thesis
 
