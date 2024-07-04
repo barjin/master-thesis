@@ -7,6 +7,7 @@ For more context, see the thesis "Social network analysis in academic environmen
 ## Usage
 
 ```sql
+.load ./norm
 SELECT normalize_name('RNDr. Johň Doé PhD.'); -- returns 'john doe'
 ```
 
@@ -18,4 +19,6 @@ On Linux, first supply the `sqlite.h` and `sqlite3ext.h` from the latest release
 gcc -g -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -fPIC -shared ./norm.c -o norm.so -lglib-2.0
 ```
 
-The extension requires glib `>2.14` because of the regex support.
+The extension requires glib `>=2.14` because of the regex support.
+
+The above command produces a shared object file `norm.so` that can be loaded into SQLite.
