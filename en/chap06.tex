@@ -21,8 +21,9 @@ This section introduces some basic vocabulary that we will use throughout this c
 
 \textbf{Visual decoding}: Also called \textit{preattentive processing} or \textit{preattentive vision}, visual decoding is the instantaneous perception of the visual field that comes without apparent mental effort. (\cite{Cleveland1985})
 
-\textbf{Node contraction}: Since we will be working with bipartite graphs, we will use the term \textit{node contraction} to denote the process of replacing a node from one partition with edges between all the incident nodes from the other partition.
-This is effectively \textit{path contraction} for paths of length $2$.
+\textbf{Bipartite network projection}: A bipartite network is a graph whose nodes can be divided into two disjoint sets, $U$ and $V$, such that every edge connects a node in $U$ to a node in $V$.
+A (monopartite) projection of a bipartite network is a graph that represents the connections between the nodes in one of the sets, $U$ or $V$.
+The nodes of the set are connected in the projection if they share a common neighbor in the bipartite network.
 
 \section{Assessing the current state} \label{sec:current-state}
 
@@ -208,68 +209,3 @@ help the user to understand the smaller-scale collaboration patterns better.
 The filter also applies to the left side of the view, where the user can see the actual publications of the selected co-authors.
 This further clears up the multiple co-authorship problem.
 
-% \section{Graph layouting algorithms}
-
-% Before we start, let us introduce some basic terminology that will be used throughout this chapter.
-
-% A \emph{graph layout} is a way to position the nodes of a graph in a two-dimensional space, such as on a screen or in print. 
-% This is a necessary step of any graph data visualisation task - without computing the layout, the graph nodes nor edges do not have any intrinsic location assigned to them.
-
-% There are several various ways of computing the graph layout, which we'll describe now in no particular order:
-
-% \begin{itemize}
-%     \item \textbf{Hierarchical layout} - for certain types of graphs, it's beneficial to display them in a hierarchical manner. 
-%     This is usually the case for trees, i.e. connected acyclic graphs - such as family trees or organisation structures.
-
-%     Such layout is typically laid out on either horizontal or vertical axis, with the root node at the top or leftmost position, and the children nodes below or to the right of their parent nodes.
-%     The other direction (i.e. vertical for horizontal-major graphs and vice versa) is used for layouting the incomparable sibling groups.
-    
-%     While this layout might be used on cyclic graphs as well, it's not as common, as it's not as easy to interpret for laymen as the other layouts.
-%     It might be useful for graphs with some kind of hierarchy or other clear ``score'' quality, such as social networks with a clear leader, or a company structure.
-
-%     \item \textbf{Circular layout} - this layout places the nodes on a circle, with the edges connecting them. 
-%     This layout is useful for visualizing relations between members of a group or community, as it's easy to see which nodes are connected to which other nodes.
-%     Some work can be done for calculating the optimal placement of nodes - be it minimizing the edge length, or minimizing the number of edge crossings.
-
-%     While minimizing the number of edge crossings might help with the graph readability, it might result in a less visually appealing graph, as the nodes might be placed further apart than necessary.
-%     % TODO: add a reference to the paper about this.
-
-%     Trying to minimize the edge length by ordering the nodes on the circle also results in a more readable graph, as this layout promotes grouping closely connected subcommunities together.
-
-%     In some cases, the global position of nodes in the layout can depict some qualitative variable - e.g. in a social network of people from different social groups, 
-%     the node position on the y-axis might represent the person's annual income. With the edges between the nodes representing the social connections,
-%     such layout can help us understand the relation between the social status and the connections between the people.
-
-%     \item \textbf{Grid layout} - this layout places the nodes on a grid, with the edges connecting them.
-%     While some optimizations, such as minimizing the edge length can be done in this case as well, 
-%     this type of layout usually results in a less readable graph.
-
-%     An equally-spaced grid layout only communicates the relations between nodes by drawing the edges between them, not utilising the position of the nodes.
-%     It is often the spatial proximity of the nodes that helps viewers understand the relations between the nodes subconciously - and while we still can 
-%     supply this information by using different visual cues (e.g. coloring of the nodes), it's often not as intuitive as the spatial proximity.
-
-%     Unlike the hierarchical and circular layouts, there does not seem to be a clear use for the global node position for depicting some qualitative variable.
-
-%     In some applications, the grid layout is sometimes used as the initial graph layout for the force-directed layout, as it's easier to calculate the initial positions of the nodes on a grid.
-
-%     \item \textbf{Force-directed layout} - this layout is based on the physical simulation of the forces between the nodes and edges of the graph.
-%     The nodes are treated as charged particles, and the edges as springs - the nodes repel each other, while the edges try to keep the nodes connected.
-    
-%     This results in a layout where the nodes are placed in such a way that the edges are as short as possible, while the nodes are as far apart as possible.
-%     This is useful for visualizing the overall structure of the graph, as it's easy to see which nodes are connected to which other nodes, and how the graph is connected.
-
-%     Using the edges to guide the layouting process results in a more ``intuitively'' readable graph, as the edges representing some sort of relation between two nodes 
-%     cause the nodes to be drawn to each other. This means that related nodes are layouted closer to each other - therefore supporting the spatial proximity Gestalt principle.
-
-%     The force-directed layout is especially useful for visualizing large social networks, as it's easy to see which nodes are connected to which other nodes, and how the graph is connected.
-%     Such graph is also easy to navigate, and the viewer can easily find bridges, hubs, or other important features of the graph.
-
-%     Similar to the grid layout, the global node position cannot be used to depict qualitative variables. While it might be technically possible 
-%     to add auxiliary forces to the simulation to achieve this - e.g. pull nodes to the left or right of the screen based on some variable - 
-%     it's not as common as in the hierarchical or circular layouts. This approach might also interfere with the edge-based layouting process,
-%     causing the graph to be less readable.
-
-%     Because of this reason and the very essence of the force-directed layouts, the location of the nodes in such layout is quite arbitrary 
-%     - in case of large graphs, the viewer might not be able to find the node they are looking for. This is why it's often useful to add 
-%     some sort of search functionality or other navigation aids to the visualization.
-% \end{itemize}

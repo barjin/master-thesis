@@ -19,6 +19,12 @@ This section introduces some of the less common graph-related terms and concepts
     Different matrix operations can be used to calculate various properties of the graph - e.g. the degree of a node can be calculated as the sum of the elements in the row of the adjacency matrix corresponding to the node.
 \end{definition}
 
+\begin{definition}[Distance matrix]
+    The \textit{distance matrix} of a graph $G = (V, E)$ is a square matrix $D$ of size $|V| \times |V|$ where $D_{uv}$ is the length of the shortest path between nodes $u$ and $v$.
+
+    The distance matrix can be calculated using algorithms such as Floyd-Warshall algorithm or repeated Dijkstra's algorithm.
+\end{definition}
+
 \begin{definition}[Node neighborhood]
     The \textit{neighborhood} of a node $v$ in a graph $G$ is the set of all nodes that are connected to $v$ by an edge.
     $$
@@ -47,6 +53,26 @@ This section introduces some of the less common graph-related terms and concepts
     In simpler terms, an \textit{induced subgraph} is a subgraph that contains all the edges between the nodes in the subgraph.
 \end{definition}
 
+\begin{definition}[Bipartite graph]
+    A \textit{bipartite graph} is a graph where the nodes can be divided into two disjoint sets $V_1$ and $V_2$ such that all edges connect nodes from $V_1$ to nodes from $V_2$.
+    
+    Formally, a graph $G = (V, E)$ is bipartite if there exists a partition of $V$ into two sets $V_1$ and $V_2$ such that
+    $$E \subseteq \{ (u, v) \mid u \in V_1, v \in V_2 \}$$
+\end{definition}
+
+\begin{definition}[Monopartite projection]\label{def:monopartite-projection}
+    The \textit{monopartite projection} of a bipartite graph $G = (V_1 \cup V_2, E)$ onto a set of nodes $V_1$ is a graph $G' = (V_1, E')$, 
+    where the nodes are the nodes in $V_1$ and the edges are between the nodes in $V_1$ that share a common neighbor in $V_2$.
+    
+    Formally defined, the monopartite projection is a graph $G' = (V_1, E')$ where
+    $$
+    E' = \{ (u, v) \mid \exists w \in V_2 \text{ such that } (u, w) \in E \text{ and } (v, w) \in E \}
+    $$
+
+    Projection algorithms can produce multiple edges between the nodes in the projection.
+    Resolution of this problem largely depends on the specific use case of the projection - e.g. $G'$ can be a multigraph or the edges can be weighted.
+    
+\end{definition}
 \section{Social networks}
 
 While the social sciences have been studying social networks for decades, not all of the terminology is relevant for the purposes of this thesis.
@@ -91,8 +117,6 @@ This section introduces the most common centrality measures - and the related to
 
     where $\sigma_{st}$ is the number of shortest paths between nodes $s$ and $t$, and $\sigma_{st}(v)$ is the number of those paths that pass through $v$.
 \end{definition}
-
-\newpage
 
 \begin{definition}[Eigenvector centrality]
     The \textit{eigenvector centrality} of a node $v_i$ in a graph $G$ is the sum of the centrality scores of the nodes that are connected to $v$.

@@ -23,11 +23,24 @@ While none of the systems offer public APIs, a data import pipeline has been set
 for the purpose of the Charles Explorer application. 
 This pipeline consists of a set of database views tracking the changes in the data and a script\footnote{\url{https://gitlab.mff.cuni.cz/barj/charles-explorer/-/blob/master/scripts/export.sh}} that exports the data to an SQLite database.
 
-\newpage
+
+\section{Target data model}\label{sec:target-data-model}
+
+We aim to transform the relational data model into a graph data model, which will allow us to use the graph algorithms for the social network analysis.
+
+While the available data would allow us to create a multi-relational graph model with different types of nodes and edges (e.g. \textit{Person}, \textit{Publication}, \textit{Course}, \textit{Study programme}), 
+we limit the scope of this thesis to the social network between the \textbf{academic researchers} and their \textbf{publications}.
+
+From the view of the input data, this is the largest and most interconnected part of the data, which will allow us to demonstrate the capabilities of the graph algorithms.
+The connections in the resulting graph are also easily interpretable (e.g. the co-authorship relations between the researchers, the authorship relations between the researchers and the publications).
+
+The nodes of the graph will represent the academic researchers and the publications, while the edges will represent the co-authorship relations between the researchers and the authorship relations between the researchers and the publications.
+
+We can notice that the graph is a \textit{bipartite graph}, as the nodes can be divided into two disjoint sets - the set of the researchers and the set of the publications.
 
 \subsection{Exploring the schema}
 
-To illustrate the structure of the data, we provide an example of the schema of the relational database together with example data.
+To illustrate the structure of the input data, we provide an example of the schema of the relational database together with example data.
 Since this thesis focuses on the social network between the academic researchers and their publications, we limit this example only on the relevant parts of the schema.
 
 The social network-relevant data accessible in the following three database views:
@@ -69,8 +82,6 @@ that would allow us to link the publication to the external sources of the publi
 This is because of a technical limitation of the information systems, as the \textit{OBD} module is not fully interoperable with the \textit{Studium} module we are 
 consuming the data from.
 
-\newpage
-
 \label{sec:pub-author-all}
 \begin{Verbatim}[commandchars=\\\{\}]
 PUBLICATION_AUTHOR_ALL (
@@ -91,7 +102,7 @@ and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of 
 In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the UKČO personal number is not always available.
 This is because of external authors, who are not affiliated with the university and do not have a UKČO personal number.
 What is worse, such authors are only identified by their name and academic titles, which can be inconsistent across the publications.
-This is again caused by the technical limitations of the source systems, as the interoperability between the \textit{OBD} and \textit{Studium} modules is limited.
+This is again caused by the limited interoperability of the \textit{OBD} and \textit{Studium} modules.
 
 Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
 this also poses a challenge for the social network analysis, as the graph algorithms might not be able 
@@ -114,8 +125,6 @@ In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the rela
 We see that the no-identifier authors take up to 45\% of the total count of the relations.
 This explains the importance of the problem of inferring the missing identities.
 
-\newpage
-
 \subsection{Naïve approach}\label{sec:naive-approach}
 
 The naïve solution to this problem is using the \textit{names} for the identity inference 
@@ -124,7 +133,7 @@ While this is a simple and straightforward transformation, it has obvious drawba
 
 Firstly, the names are not guaranteed to be \textit{unique} across the dataset. 
 
-Secondly, the names are not guaranteed to be \textit{consistent} across the dataset - due to name changes (e.g. marital), 
+Secondly, the names are not guaranteed to be \textit{consistent} across the dataset - due to (e.g. marital) name changes, 
 typos, or different conventions in the academic titles.
 See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBLICATION\_AUTHOR\_ALL} view:
 
@@ -247,7 +256,7 @@ After the normalization and aggregating the records using the normalized names,
 we get \texttt{240001} distinct normalized names in the dataset.
 
 % todo factcheck
-The most frequent external author was \textit{B. Abbott} with $1339$ records, followed by $J. Smith$ with $1178$ records.
+The most frequent external author was \textit{B. Abbott} with $1393$ records, followed by $G. Aad$ with $1191$ records.
 This raises concerns about the uniqueness of the normalized names - as with $1339$ coauthored publications, \textit{B. Abbott} would be the 99.9 percentile (or the top 7th author),
 compared to the internal authors with known identifiers.
 
@@ -269,7 +278,7 @@ this would still result in the creation of up to two nodes for the same person (
 
 \begin{mybox}{``On-demand'' naïve identity inference}
 
-To solve the over-merging issue of the authors with common names in the naïve approach, we can slightly modify it.
+In an attempt to solve the over-merging issue of the authors with common names in the naïve approach, we slightly modify the algorithm.
 
 Instead of merging the records directly in the database, we can merge the records on-demand in the application's visualization layer.
 If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
@@ -294,6 +303,8 @@ In the realm of data mining and statistics, \textit{hierarchical clustering} is 
 given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In case of top-down clustering, the process is reversed.}
 The distance metric used for the clustering can be any metric that defines the similarity between the data points.
 
+\subsubsection{Algorithm}\label{sec:distance-based-hierarchical-clustering}
+
 In the case of our dataset, we can use the shortest path distance between the nodes in the graph as the distance metric.
 
 We define the merging process as follows:
@@ -301,13 +312,71 @@ We define the merging process as follows:
 \begin{enumerate}
     \item Start with a graph with nodes only merged based on explicit identifiers. \texttt{PUBLICATION\_AUTHOR\_ALL} records without an explicit identifier are represented as separate nodes.
     \item Select an arbitrary unmerged node without an identifier.
-    \begin{itemize}
+    \begin{enumerate}
         \item Using the \hyperref[sec:naive-approach]{naïve approach}, we find all merge candidates for the selected node. Note that we are using the normalized name equality as the requirement for the merge.
         \item We calculate the distance matrix between the selected node and all the merge candidates.
         \item Using a hierarchical clustering algorithm, we cluster the data points based on the distance matrix. We select the cut-off distance based on the distance distribution.
-    \end{itemize}
+    \end{enumerate}
     \item Go to step 2 until all the non-identifier nodes are merged.
 \end{enumerate}
+
+We can notice a few optimizations in the internal loop in the second step.
+As mentioned in \ref{sec:target-data-model}, the graph containing the nodes with the explicit identifiers is a \textit{bipartite graph}.
+Because of this, any path between two person-type nodes is even-lengthed.
+Therefore, the shortest path distance between two person-type nodes is 2.
+
+Additionally, the shortest path distance between two \textit{mergeable} nodes is 4.
+This is based on an observation that two person nodes in distance 2 are connected to the same publication node.
+In case there are two merge candidates (based on the naïve mergeability requirement) connected to the same publication node,
+these should not be considered \textit{mergeable}, as the publication is expected to list unique authors - i.e. the candidates are
+different people with the same name.
+
+\subsubsection{Implementation}
+
+The \hyperref[sec:distance-based-hierarchical-clustering]{proposed algorithm} 
+is computationally expensive. The distance matrix calculation has a time complexity of $O(n^2)$
+and the standard hierarchical agglomerative clustering algorithm has a time complexity of $O(n^3)$.
+
+\textbf{Distance matrix calculation}
+
+Loading the social network into Memgraph\footnote{An open-source in-memory graph database. Available at \url{https://memgraph.com/}.}
+, we quite easily implement the calculation of the distance matrix between the merge candidates using the Cypher graph query language.
+
+\begin{figure}[!ht]
+\begin{verbatim}
+    MATCH path=(p1: Person)-[*BFS]-(p2: Person)
+    WHERE 
+        p1.PERSON_ID IN $queryCandidates 
+            AND 
+        p2.PERSON_ID IN $queryCandidates
+    RETURN 
+        p1.PERSON_ID, 
+        p2.PERSON_ID, 
+        size(path) AS distance
+\end{verbatim}
+\captionsetup{width=.9\linewidth}
+\caption{The Cypher query for the distance matrix calculation.\protect\footnotemark}
+\end{figure}
+
+\footnotetext{Rather curiously, passing the IDs array as a parameter results in a highly inefficient execution plan in Memgraph causing a full scan of the nodes followed by a filter on the PERSON\_ID.
+Inlining the parameter array into the query causes Memgraph to use faster indexed access.}
+
+In this query, \texttt{\$queryCandidates} is an array containing the node identifiers of the merge candidates for a given normalized name group.
+
+
+%% todo add graphs
+\begin{mybox}
+    {Optimization: Monopartite projection}
+
+    The run time of the distance matrix calculation is further increased by the \textit{bipartitedness} of the graph.
+    During the calculation of the shortest path distance between two person nodes, 
+    the breadth-first search algorithm is forced to explore the intermediate publication nodes - even though they have no possibility of being the target node.
+    This can inflate the size of the internal BFS queue and the number of the visited nodes and cause 
+    
+    To mitigate this issue, we can calculate the distance matrix in \texttt{2(b)} on the \hyperref[def:monopartite-projection]{monopartite projection} of the social network on 
+    the set of the \textit{person nodes}. By replacing the publication nodes with edges on the person nodes, we reduce the lengths of the shortest paths in half.
+\end{mybox}
+
 
 
 % \newpage
@@ -320,31 +389,3 @@ We define the merging process as follows:
 
 % The graph database Memgraph\footnote{\url{https://memgraph.com/}} offers a built-in implementation of the \textit{node2vec} algorithm\footnote{\url{https://snap.stanford.edu/node2vec/}}.
 % We can use this to project the nodes of the graph into a 2D space and then use the clustering algorithms to group the nodes with similar attributes (and same normalized names) together.
-
-
-% \section{Inferring missing data}
-
-% This section talks about the data inference for missing data. This is a problem mostly for the external authors (with little to no affiliation to CUNI) who can be often only identified by their name and academic titles. We try to come up with a better way of ``filling in the blanks'' - either by using some basic statistics or some data extracted from the social network itself.
-
-% \subsection{Infering identities from the social network}
-
-% Another example is the search for Dmytro Yu Balakin, which yields the following results:
-
-% \begin{itemize}
-%     \item Dmytro Yu Balakin
-%     \item Dmytro Yu Batakin
-%     \item Dmytro Yu. Balakin.
-% \end{itemize}
-
-% It is clear that most of those are likely the same person, but the data is not consistent. The first one is the correct one, but the other ones are missing the academic titles and the ``doc.'' prefix. The ``PhD.'' suffix is also inconsistent - sometimes it is ``PhD.'', sometimes ``Ph.D.''. The ``doc.'' prefix is also sometimes missing.
-
-% ...
-% ...
-
-% While it might be tempting to solve this "online" by visually merging the entities in the application's visualization layer, this causes multiple issues. The obvious one are the performance implications 
-
-% \section{Analyzing the social network}
-
-% The first contact with the network, description of some basic properties, discovering the features of the data and trying to mine some non-obvious relations from the data.
-
-% \dots
