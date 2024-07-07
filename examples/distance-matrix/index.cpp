@@ -14,17 +14,16 @@
 ** https://jindrich.bar/master-thesis/bar-social-network-analysis-in-academic-environment-2024.pdf
 */
 
+#include "csv.h"
 #include <iostream>
 #include <map>
 #include <queue>
 #include <thread>
 #include <unordered_set>
 
-#include "csv.h"
-
 #define DEBUG 0
-#define debug_print(fmt, ...)                         \
-    do {                                              \
+#define debug_print(fmt, ...) \
+    do { \
         if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); \
     } while (0)
 #define THREAD_COUNT 8
@@ -54,13 +53,15 @@ class Graph {
         return edges.at(node);
     }
 
-   public:
+  public:
     Graph() {}
 
     /**
      * Returns the number of distinct nodes in the graph.
      */
-    std::uint32_t node_count() { return node_mapping.size(); }
+    std::uint32_t node_count() {
+        return node_mapping.size();
+    }
 
     /**
      * Adds an edge between two nodes with the given identifiers.
@@ -113,14 +114,17 @@ class Graph {
         while (!q.empty() && visited[to_id] == 0) {
             std::uint32_t current = q.front();
 
-            debug_print("Processing node %s\n",
-                        reverse_node_mapping[current].c_str());
+            debug_print(
+                "Processing node %s\n", reverse_node_mapping[current].c_str()
+            );
             q.pop();
 
             for (auto &nei : edges[current]) {
                 if (visited[nei] == 0) {
-                    debug_print("    Processing neighbor %s\n",
-                                reverse_node_mapping[nei].c_str());
+                    debug_print(
+                        "    Processing neighbor %s\n",
+                        reverse_node_mapping[nei].c_str()
+                    );
                     visited[nei] = 1;
                     distance[nei] = distance[current] + 1;
                     if (nei == to_id) {
@@ -139,7 +143,8 @@ class Graph {
      * between a single start node and multiple other nodes.
      */
     std::vector<std::uint32_t> get_distance_v(
-        const std::string &from, const std::vector<std::string> &to) {
+        const std::string &from, const std::vector<std::string> &to
+    ) {
         std::uint32_t from_id = node_mapping[from];
         std::unordered_set<std::uint32_t> to_ids;
         std::uint32_t found_targets = 0;
@@ -158,22 +163,28 @@ class Graph {
         while (!q.empty() && found_targets < to_ids.size()) {
             std::uint32_t current = q.front();
 
-            debug_print("Processing node %s\n",
-                        reverse_node_mapping[current].c_str());
+            debug_print(
+                "Processing node %s\n", reverse_node_mapping[current].c_str()
+            );
 
             q.pop();
             for (auto &nei : edges[current]) {
                 if (!visited[nei]) {
-                    debug_print("    Processing neighbor %s\n",
-                                reverse_node_mapping[nei].c_str());
+                    debug_print(
+                        "    Processing neighbor %s\n",
+                        reverse_node_mapping[nei].c_str()
+                    );
                     visited[nei] = true;
                     distance[nei] = distance[current] + 1;
                     q.push(nei);
                     if (to_ids.find(nei) != to_ids.end()) {
                         found_targets++;
                         if (found_targets % 10 == 0) {
-                            debug_print("Found %d/%ld targets\n", found_targets,
-                                        to_ids.size());
+                            debug_print(
+                                "Found %d/%ld targets\n",
+                                found_targets,
+                                to_ids.size()
+                            );
                         }
                         if (found_targets == to_ids.size()) {
                             break;
@@ -196,12 +207,14 @@ class Graph {
  * A list of public node identifiers to be used as the starting point for the
  * distance calculation.
  */
-std::vector<std::string> merge_candidates = {"1025-roser-fernandezcliment",
-                                             "2-joachim-sodequist",
-                                             "3-xiaoyu-sheng",
-                                             "4-zhizhan-qiu",
-                                             "5-anton-tadich",
-                                             "6-qile-li"};
+std::vector<std::string> merge_candidates = {
+    "1025-roser-fernandezcliment",
+    "2-joachim-sodequist",
+    "3-xiaoyu-sheng",
+    "4-zhizhan-qiu",
+    "5-anton-tadich",
+    "6-qile-li"
+};
 
 int main() {
     Graph g;
@@ -234,14 +247,16 @@ int main() {
     std::size_t THREAD_BATCH_SIZE = merge_candidates.size() / THREAD_COUNT;
 
     for (std::uint8_t thread_n = 0; thread_n < THREAD_COUNT; ++thread_n) {
-        threads.push_back(std::thread([&g, thread_n, THREAD_BATCH_SIZE,
+        threads.push_back(std::thread([&g,
+                                       thread_n,
+                                       THREAD_BATCH_SIZE,
                                        &cout_mutex] {
             for (auto &id : std::vector<std::string>(
                      merge_candidates.begin() + thread_n * THREAD_BATCH_SIZE,
-                     thread_n == THREAD_COUNT - 1
-                         ? merge_candidates.end()
-                         : merge_candidates.begin() +
-                               (thread_n + 1) * THREAD_BATCH_SIZE)) {
+                     thread_n == THREAD_COUNT - 1 ? merge_candidates.end()
+                                                  : merge_candidates.begin() +
+                             (thread_n + 1) * THREAD_BATCH_SIZE
+                 )) {
                 auto distances = g.get_distance_v(id, merge_candidates);
 
                 std::lock_guard<std::mutex> lock(cout_mutex);
@@ -261,8 +276,9 @@ int main() {
         std::chrono::steady_clock::now();
 
     std::cout << "Duration: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                       begin)
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     end - begin
+                 )
                      .count()
               << "ms" << std::endl;
 

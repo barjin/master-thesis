@@ -1,3 +1,41 @@
-BasedOnStyle: Google
+# Author: @nicklasfrahm et al.
+# https://gist.github.com/nicklasfrahm/4a4fff24381f85ada76ccb651f555e1f
+
+ColumnLimit: 80
+ContinuationIndentWidth: 4
 IndentWidth: 4
-ColumnLimit: 0
+TabWidth: 4
+ConstructorInitializerIndentWidth: 4
+IndentCaseLabels: true
+PenaltyReturnTypeOnItsOwnLine: 200
+UseTab: Never
+SortIncludes: true
+SortUsingDeclarations: false
+AlignConsecutiveMacros: false
+AlignEscapedNewlines: DontAlign
+AlignAfterOpenBracket: BlockIndent
+AlignOperands: false
+AlignTrailingComments: false
+BinPackArguments: false
+BinPackParameters: false
+SpacesInContainerLiterals: false
+Cpp11BracedListStyle: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Always
+FixNamespaceComments: false
+ReflowComments: false
+NamespaceIndentation: All
+IncludeBlocks: Merge
+BreakStringLiterals: false
+BreakConstructorInitializers: AfterColon
+IndentPPDirectives: BeforeHash
+IncludeCategories:
+  - Regex: '"[[:alnum:]._-]+"'
+    Priority: 1
+    SortPriority: 1
+  - Regex: '^((<|").*/)'
+    Priority: 2
+    SortPriority: 2
+  - Regex: "<[[:alnum:]._-]+>"
+    Priority: 3
+    SortPriority: 3
