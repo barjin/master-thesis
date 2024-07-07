@@ -6,3 +6,5 @@ pdfa.xmpi
 abstract.*
 !abstract.tex
 !abstract.xmpdata
+
+.vscode
