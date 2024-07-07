@@ -297,7 +297,7 @@ Using this, every external author's coauthorship is stored as a separate node in
 \subsection{Distance-based hierarchical clustering}
 
 To solve the issues of the naïve approach, we can try to use the graph structure of the data to infer the missing identities.
-One of the possible approaches is to use the \textit{hierarchical clustering} methods to group the nodes with similar attributes together.
+One of the possible approaches is to use the \textit{hierarchical clustering} methods to group the nodes from similar parts of the graph together.
 
 In the realm of data mining and statistics, \textit{hierarchical clustering} is an umbrella term for a set of unsupervised learning algorithms for grouping
 given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In case of top-down clustering, the process is reversed.}
@@ -347,8 +347,8 @@ Loading the social network into Memgraph\footnote{An open-source in-memory graph
     MATCH path=(p1: Person)-[*BFS]-(p2: Person)
     WHERE 
         p1.PERSON_ID IN $queryCandidates 
-            AND 
-        p2.PERSON_ID IN $queryCandidates
+        AND p2.PERSON_ID IN $queryCandidates
+        AND p1.PERSON_ID < p2.PERSON_ID
     RETURN 
         p1.PERSON_ID, 
         p2.PERSON_ID, 
@@ -356,19 +356,24 @@ Loading the social network into Memgraph\footnote{An open-source in-memory graph
 \end{verbatim}
 \captionsetup{width=.9\linewidth}
 \caption{The Cypher query for the distance matrix calculation.\protect\footnotemark}
+\label{fig:distance-matrix-calculation}
 \end{figure}
 
 \footnotetext{Rather curiously, passing the IDs array as a parameter results in a highly inefficient execution plan in Memgraph causing a full scan of the nodes followed by a filter on the PERSON\_ID.
 Inlining the parameter array into the query causes Memgraph to use faster indexed access.}
 
 In this query, \texttt{\$queryCandidates} is an array containing the node identifiers of the merge candidates for a given normalized name group.
+Note that the query results can also be paginated using the \texttt{SKIP} and \texttt{LIMIT} clauses.
 
+Preliminary experiments show that the query execution time is around \texttt{5.37} ms per pair of nodes.
+Calculating the matrix of e.g. \texttt{490000} pairs (for an external author consisting of 700 merge candidates) would take around 43 minutes.
+While this is a one-time operation - and the distances cannot change, as the external author nodes are always connected only to the one publication they are attributed to - this still leaves space for optimization.
 
 %% todo add graphs
 \begin{mybox}
     {Optimization: Monopartite projection}
 
-    The run time of the distance matrix calculation is further increased by the \textit{bipartitedness} of the graph.
+    The run time of the distance matrix calculation is artificially increased by the \textit{bipartitedness} of the graph.
     During the calculation of the shortest path distance between two person nodes, 
     the breadth-first search algorithm is forced to explore the intermediate publication nodes - even though they have no possibility of being the target node.
     This can inflate the size of the internal BFS queue and the number of the visited nodes and cause 
@@ -377,15 +382,61 @@ In this query, \texttt{\$queryCandidates} is an array containing the node identi
     the set of the \textit{person nodes}. By replacing the publication nodes with edges on the person nodes, we reduce the lengths of the shortest paths in half.
 \end{mybox}
 
+While the monopartite projection of the social network can be calculated using the Cypher query language in Memgraph,
+we transform the data straight in the source SQL database. Using a self \texttt{INNER JOIN} on the \texttt{PUBLICATION\_AUTHOR\_ALL} view over the \texttt{PUBLICATION\_ID} column,
+we receive the monopartite projection of the social network on the set of the person nodes. Projecting the data onto the person identifiers
+leaves us with a table containing the pairs of the person identifiers connected by an edge.
 
+\begin{figure}[!ht]
+\begin{verbatim}
+SELECT DISTINCT X.PERSON_ID, Y.PERSON_ID 
+   FROM (
+      SELECT PERSON_ID, PUBLICATION_ID FROM PUBLICATION_AUTHOR_ALL
+   ) AS X 
+   INNER JOIN (
+      SELECT PERSON_ID, PUBLICATION_ID FROM PUBLICATION_AUTHOR_ALL
+   ) AS Y 
+USING(PUBLICATION_ID)
+WHERE X.PERSON_ID < Y.PERSON_ID;
+\end{verbatim}
+\captionsetup{width=.9\linewidth}
+\caption{The SQL query for the monopartite projection of the social network.}
+\label{fig:monopartite-projection}
+\end{figure}
 
-% \newpage
+Note that the \texttt{PERSON\_ID} in the query above is either the internal person identifier or a \textit{generated unique identifier} for the external authors.
 
-% \subsubsection{Embedding-based clustering}
+Unfortunately, even with the projected graph, the performance of the shortest path distance calculation in Memgraph is still suboptimal. 
+With the mean time of \texttt{5.68} ms per pair of nodes, this approach does not provide any significant performance improvement over the original one.
 
-% Another approach to the problem of inferring the missing identities is to use the \textit{embedding-based clustering} methods.
+This might be caused by the specific structure of the academic social network, where the person nodes are connected by a much small number of publication nodes.
+This is especially true with the graph with external authors, where the external author nodes are connected only to the one publication node.
 
-% The idea behind the embedding-based clustering is to project the nodes of the graph into a lower-dimensional space, where the nodes with similar attributes are close together.
+Note that the BFS algorithm has complexity of $\mathcal{O}(V + E)$, where $V$ is the number of the nodes and $E$ is the number of the edges.
+While the monopartite projection reduces the number of the nodes in the graph, it does not reduce the number of the edges - as the publication nodes are replaced 
+by the edges between the all the coauthoring person nodes. 
 
-% The graph database Memgraph\footnote{\url{https://memgraph.com/}} offers a built-in implementation of the \textit{node2vec} algorithm\footnote{\url{https://snap.stanford.edu/node2vec/}}.
-% We can use this to project the nodes of the graph into a 2D space and then use the clustering algorithms to group the nodes with similar attributes (and same normalized names) together.
+In case of the process described with the \hyperref[fig:monopartite-projection]{Figure 2.6}, each publication node is replaces 
+by $k$ edges, where 
+$$
+k = \binom{deg(v)}{2}
+$$
+
+for $deg(v)$ being the \hyperref[def:node-degree]{degree} of the publication node $v$.
+
+\newpage
+
+\begin{mybox}
+    {Optimization: BFS ``vectorization''}
+
+    Memgraph resolves the \hyperref[fig:distance-matrix-calculation]{Cypher query} for calculating the distance matrix
+    with execution plan that includes a shortest path operation for \textit{each pair of the nodes}.
+
+    While Memgraph uses a slightly optimized algorithm\footnote{Expanding the BFS fringe from both ends (\href{https://github.com/memgraph/memgraph/blob/58c3902c194e80a027d141788bd1afd07def0114/src/query/plan/operator.cpp\#L1569\-L1572}{see source on GitHub}).} for calculating the shortest path distance between the two nodes,
+    the distance matrix calculation can still be optimized by using a \textit{vectorized} approach.
+
+    During a regular BFS, the algorithm visits growing $k$-hop neighborhoods of the start node until it finds the target node.
+    Since we are calculating the entire distance matrix (for a set of nodes), we can optimize the process by searching for all the target nodes in the same BFS run.
+    This allows us to acquire the shortest path distances between the start node and all the target nodes in a single BFS run.
+
+\end{mybox}
