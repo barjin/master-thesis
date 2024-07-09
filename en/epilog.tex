@@ -1,6 +1,21 @@
 \chapter*{Conclusion}
 \addcontentsline{toc}{chapter}{Conclusion}
 
-The conclusion wraps up the thesis, describing the achievements we've reached and suggests ideas for further research.
+The goal of this thesis was to improve the Charles Explorer web application - both in terms of user experience and the search engine - using the synthesized \textit{academic social network} from the existing relational data.
 
-\dots
+We have devised a highly performant pipeline for trasforming the relational data into a graph representation of the academic social network.
+After the transformation, we explored the network and proposed various ways of utilizing the network metrics for inferring missing data.
+While the hierarchical clustering approach yielded better results than the baseline naïve methods, the performance of the network-based methods was not consistent enough to be used in the production environment.
+
+With the synthesized social network in place, we explored the possibility of using the network for re-ranking the search results in the Charles Explorer application.
+By benchmarking different re-ranking strategies against existing academic search engines, we have shown that the social network-based re-ranking can improve the search results' relevance.
+%% todo fact check
+
+The best-performing re-ranking strategy was the one based on the PageRank algorithm, which outperformed the baseline by a significant margin.
+The computational performance of the re-ranking strategies unfortunately did not satisfy the requirements for the production environment either.
+
+Lastly, we have reimplemented the tool for visualising the academic social network in the Charles Explorer application. 
+The tool now better adheres to the visualization principles of graph data, it is more user-friendly and performant.
+By simplifying certain parts of the visualization, we improve the interpretability of the visualized data.
+
+This visualization tool became a part of the Charles Explorer application and is now available to the users.
