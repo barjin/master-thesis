@@ -320,7 +320,7 @@ We define the merging process as follows:
     \item Go to step 2 until all the non-identifier nodes are merged.
 \end{enumerate}
 
-We can notice a few optimizations in the internal loop in the second step.
+We can make a few observations in the internal loop of the second step.
 As mentioned in \ref{sec:target-data-model}, the graph containing the nodes with the explicit identifiers is a \textit{bipartite graph}.
 Because of this, any path between two person-type nodes is even-lengthed.
 Therefore, the shortest path distance between two person-type nodes is 2.
@@ -375,8 +375,8 @@ While this is a one-time operation - and the distances cannot change, as the ext
 
     The run time of the distance matrix calculation is artificially increased by the \textit{bipartitedness} of the graph.
     During the calculation of the shortest path distance between two person nodes, 
-    the breadth-first search algorithm is forced to explore the intermediate publication nodes - even though they have no possibility of being the target node.
-    This can inflate the size of the internal BFS queue and the number of the visited nodes and cause 
+    the breadth-first search algorithm is forced to explore the intermediate publication nodes - even though those have no possibility of being the target node.
+    This can inflate the size of the internal BFS queue and the number of the visited nodes.
     
     To mitigate this issue, we can calculate the distance matrix in \texttt{2(b)} on the \hyperref[def:monopartite-projection]{monopartite projection} of the social network on 
     the set of the \textit{person nodes}. By replacing the publication nodes with edges on the person nodes, we reduce the lengths of the shortest paths in half.
@@ -430,13 +430,92 @@ for $deg(v)$ being the \hyperref[def:node-degree]{degree} of the publication nod
     {Optimization: BFS ``vectorization''}
 
     Memgraph resolves the \hyperref[fig:distance-matrix-calculation]{Cypher query} for calculating the distance matrix
-    with execution plan that includes a shortest path operation for \textit{each pair of the nodes}.
+    with execution plan that includes a shortest path operation for \textit{each node pair}.
 
-    While Memgraph uses a slightly optimized algorithm\footnote{Expanding the BFS fringe from both ends (\href{https://github.com/memgraph/memgraph/blob/58c3902c194e80a027d141788bd1afd07def0114/src/query/plan/operator.cpp\#L1569\-L1572}{see source on GitHub}).} for calculating the shortest path distance between the two nodes,
+    While Memgraph uses a slightly optimized algorithm\footnote{Expanding the BFS fringe from both ends (\href{https://github.com/memgraph/memgraph/blob/58c3902c194e80a027d141788bd1afd07def0114/src/query/plan/operator.cpp\#L1569-L1572}{see source on GitHub}).} for calculating the shortest path distance between the two nodes,    
     the distance matrix calculation can still be optimized by using a \textit{vectorized} approach.
 
     During a regular BFS, the algorithm visits growing $k$-hop neighborhoods of the start node until it finds the target node.
-    Since we are calculating the entire distance matrix (for a set of nodes), we can optimize the process by searching for all the target nodes in the same BFS run.
-    This allows us to acquire the shortest path distances between the start node and all the target nodes in a single BFS run.
+    Since in our case, we are calculating the entire distance matrix (for a set of nodes), 
+    we can optimize the process by searching for all the target nodes in the same BFS run.
+    This allows us to acquire the shortest path distances between the start node and all 
+    the target nodes in a single BFS run.
 
 \end{mybox}
+
+The algorithm itself is quite simple and differs from the regular BFS approach only in several details.
+The following pseudocode example describes the vectorized BFS algorithm:
+
+\begin{algorithmic}[1]
+    \Function{VectorizedBFS}{graph, start, targets}
+        \State $visited, queue, distances \gets \emptyset$
+        \State $queue.\text{push}(start, 0)$
+        \While{$\text{not } queue.\text{empty}() \text{ and } \underline{\textbf{not } targets.\text{empty}()}$}
+            \State $(node, depth) \gets queue.\text{pop}()$
+            \If{$node \text{ in } targets$}
+                \State $distances[node] \gets depth$
+                \State $\underline{targets.\text{remove}(node)}$
+            \EndIf
+            \For{$neighbor \text{ in } graph[node]$}
+                \If{$neighbor \text{ not in } visited$}
+                    \State $queue.\text{push}((neighbor, depth + 1))$
+                    \State $visited.\text{add}(neighbor)$
+                \EndIf
+            \EndFor
+        \EndWhile
+        \State \Return $distances$
+    \EndFunction
+\end{algorithmic}
+
+Notice the underlined parts of the algorithm - these are the parts that differ from the regular breadth-first search for a single target node.
+Unlike the single target BFS, the vectorized version only terminates once all the target nodes are visited.
+
+Note that - given we consider the \textit{targets} list constant-sized - the algorithm has the same asymptotic complexity as the regular BFS - i.e. $\mathcal{O}(V + E)$.
+This is obvious if we compare this vectorized approach to the regular single-target BFS for the \textit{furthest} target node.
+Both algorithms visit the same number of nodes and edges, the only difference is in the output - the vectorized BFS outputs the distances to all the target nodes.
+
+At the time of writing this thesis (\today), the vectorized BFS algorithm is not implemented
+in Memgraph or any other major graph database (Neo4j, OrientDB, ArangoDB). 
+While with the vertex identifiers inlined in the query, the Cypher query planner might be able to automatically recognize the 
+need for the vectorized BFS, the obscure nature of this optimization is likely the reason for the lack of the implementation.
+
+Because of this, we implement our own distance matrix calculator based on the vectorized BFS algorithm in C++\footnote{Implementation at \url{https://github.com/barjin/master-thesis/tree/main/examples/distance-matrix}}.
+This program takes the graph data - i.e. the output of \hyperref[fig:monopartite-projection]{Figure \ref*{fig:monopartite-projection}} - in CSV format and parses the data into an in-memory graph representation.
+It then iterates over a list of the user-specified target nodes, taking each node as the start node for the \textit{VectorizedBFS} algorithm.
+The rest of the list is used as the target nodes for the algorithm. 
+
+By iterating through the list of the target nodes, we calculate the distance matrix in $k$ BFS runs, where $k$ is the number of the target nodes.
+This is a significant improvement over the $k^2$ BFS runs in the original Memgraph approach.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.7\textwidth]{../img/identity_inferrence_distance_matrix.png}
+    \centering
+    \caption{The performance comparison of different distance matrix calculation methods.}
+    \label{fig:identity-inferrence-benchmarks}
+\end{figure}
+
+Benchmarks show that the vectorized BFS algorithm is with mean time of $1.65\text{ ms}$ per pair of nodes significantly faster than the regular BFS algorithm.
+
+\hyperref[fig:identity-inferrence-benchmarks]{Figure \ref*{fig:identity-inferrence-benchmarks}} compares the results to two more possible optimizations of the vectorized approach.
+
+The \textbf{Vectorized symmetric} approach only calculates the upper triangle of the distance matrix and mirrors the results to the lower triangle.
+This utilizes the fact that the social network graph we are using is undirected - i.e. the shortest path distance between the nodes $u$ and $v$ is the same as the distance between the nodes $v$ and $u$.
+This makes the distance matrix symmetric, and allows us to save half of the calculations by only calculating the upper triangle.
+
+This approach brings next to no performance improvement over the regular vectorized BFS.
+The reason becomes apparent when we consider the fact that the vectorized BFS's complexity is $\mathcal{O}(V + E)$ - i.e. does not depend on the number of the target nodes.
+
+The approach labeled \textbf{Vectorized w/ threads} parallelizes the vectorized BFS algorithm using multithreading.
+Since the BFS algorithm is inherently sequential, the parallelization is done on the outer loop iterating through the start nodes.
+The parallelization itself is quite straightforward, as \textit{VectorizedBFS} is a pure function with no side effects.
+
+This approach comes out as the most performant, with the mean time of $0.45\text{ ms}$ per pair of nodes.
+
+\textbf{Hierarchical clustering}
+
+After calculating the distance matrix, we can proceed with the hierarchical clustering algorithm.
+For the purpose of this thesis, we will be using specifically the bottom-up agglomerative clustering algorithm.
+
+The Python library \texttt{scipy} provides an implementation of the hierarchical clustering algorithm in the \texttt{scipy.cluster.hierarchy} module.
+Applying this algorithm to the distance matrices calculated in the previous step, we can cluster the nodes based on the distance matrix.
