@@ -31,18 +31,44 @@ In the rest of this thesis, the term ``social network'' will be used to refer st
 \section*{Related work}
 \addcontentsline{toc}{section}{Related work}
 
+This section talks about the related work in the field of social network analysis and its applications in the context of academic research.
+It is separated into two parts - while the first subsection talks about the social network analysis in general, 
+the second part mentions different academic research result retrieval systems and their features.
+
+\subsection*{Theoretical background}
+\addcontentsline{toc}{subsection}{Theoretical background}
+
 The social network analysis of research groups has been a topic of interest for various publications. 
 \cite{ORDOOBADI2019S164} and \cite{CIMENLER2014667} explore the social network of researchers and their publications, and they try to infer the 
 social network structure from the data about the co-authorship of the publications. 
 Later on they try to compare the social network metrics with the academic performance - citation counts - of the researchers.
 
-\cite{inproceedings} explore the use of social network data for improving the search result ranking in the context of information retrieval.
-By using data from 
+\cite{social-relevance-for-re-ranking-documents} explore the use of social relevance data for improving the search result ranking in the context of information retrieval.
+By using data from the \textit{Umaps Knowtex} dataset (no longer available) they show that the social relevance metrics - like share count, comment count or like count - can be used to improve the ranking of the search results.
+
+\cite{social-model-literature-access} introduce a social model for academic literature access systems, 
+where metrics on the social network of researchers, their publications and the users of the system is used to improve 
+the search results ranking. In this paper, the authors explore weighted approach with multiple measures like betweeness, closeness or PageRank.
+
+Note that while this is quite similar to one of the topics of this thesis, the authors of this paper
+only evaluate the social model on a small dataset of publications in the \ac{ACM} \ac{SIGIR} conference.
+Because of this, the publications are tightly connected in topic and the social network is quite dense, unlike in our case.
 
 \cite{aseo} describe inner workings of academic search engines on the example of Google Scholar and
 discuss search engine optimization in the context of academic search engines. 
 The reviewers of this paper mention the potentially harmful effect of \ac{ASEO} when the authors artificially increase 
 the relevance of their publications to the search queries by deliberately overusing certain keywords.
+
+\subsection*{Existing systems}
+\addcontentsline{toc}{subsection}{Existing systems}
+
+As the main goal of this thesis is improving the user experience of the Charles Explorer application,
+we briefly mention the existing systems that are used for the academic research result retrieval and their features.
+
+\textbf{Google Scholar} is the most popular academic search engine.
+According to the documentation\footnote{\url{https://scholar.google.com/intl/en/scholar/inclusion.html}}, the system crawls internet for well-formed academic publications and indexes them automatically. 
+
+
 
 
 
