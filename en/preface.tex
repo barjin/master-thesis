@@ -39,6 +39,13 @@ Later on they try to compare the social network metrics with the academic perfor
 \cite{inproceedings} explore the use of social network data for improving the search result ranking in the context of information retrieval.
 By using data from 
 
+\cite{aseo} describe inner workings of academic search engines on the example of Google Scholar and
+discuss search engine optimization in the context of academic search engines. 
+The reviewers of this paper mention the potentially harmful effect of \ac{ASEO} when the authors artificially increase 
+the relevance of their publications to the search queries by deliberately overusing certain keywords.
+
+
+
 \section*{Goals of the thesis}
 \addcontentsline{toc}{section}{Goals of the thesis}
 
@@ -58,3 +65,26 @@ While the current implementation is sufficient for the basic exploration of the 
 it lacks the advanced features that would allow for the more detailed analysis of the social network.
 The current state of the visualization also suffers from performance and UX issues, which we want to address in this thesis.
 
+\section*{Experimental setup}
+
+In various parts of this thesis, we are running different benchmarks and experiments.
+While most of those do not measure the performance of the algorithms, we still want to 
+provide the reader with the information about the hardware and software used in the experiments for full reproducibility.
+
+If not stated otherwise, the experiments were run on a machine with the following specifications:
+\begin{itemize}
+    \item \textbf{APU}: AMD Ryzen 7 PRO 2700U
+    \item \textbf{RAM}: 24 GB
+    \item \textbf{OS}: Linux Mint 21 (5.15.0-112-generic)
+\end{itemize}
+
+Additionally, the following software versions were used in the experiments:
+
+\begin{itemize}
+    \item \textbf{Python} 3.10.12
+    \item \textbf{SQLite} 3.45.1
+    \item \textbf{Memgraph} v2.18.0
+\end{itemize}
+
+Where important (due to breaking changes across versions or the use of specific features), 
+the versions of the libraries used in the experiments are listed in the \texttt{README} files of the respective repositories.
