@@ -8,7 +8,7 @@ and experiment with utilizing the social network data for the search results ran
 \section{Full-text search}
 
 Full-text search is nowadays an essential part of any information retrieval system. 
-Many search engines - including Apache Solr in Charles Explorer - implement the full text search by utilizing the TF-IDF algorithm.
+Many search engines - including Apache Solr in Charles Explorer - implement the full text search by utilizing the TF-IDF algorithm or similar.
 This is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
 
 The TF-IDF algorithm is based on the term frequency and inverse document frequency of the terms in the documents - a \textit{document} is in general unstructured free text content.
@@ -36,6 +36,7 @@ Result ranking in information retrieval refers to the ordering of the search res
 The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
 
 While it might seem a bit superficial, the ranking is in fact still part of the information retrieval process. 
+%% todo make into citations
 As multiple studies show \footnote{https://link.springer.com/article/10.1007/s11151-014-9435-y}\footnote{https://link.springer.com/article/10.1007/s10791-010-9150-8}, 
 the ranking of the search results positively correlates with the click-through rate of the results 
 - likely because of the typical top-left to bottom-right reading pattern of the users.
@@ -44,7 +45,7 @@ This can be further affected by other, more technical factors - such as the need
 %% https://link.springer.com/article/10.1007/s10791-010-9150-8 - Re-ranking search results using an additional retrieved list
 
 Considering a simple tf-idf based search engine, the ranking of the search results is based on the relevance of the documents to the search query.
-This is directly related to the term frequency of the query in the document - for a fixed query and a given document collection, we forget about the inverse document frequency, as it's constant over all the documents.
+This is directly related to the term frequency of the query in the document - for a fixed query and document collection, we can forget about the inverse document frequency, as it's constant over all the documents.
 Ranking the documents solely based on the term frequency might however lead to unfavourable results - especially in the case of a proxy-representation of a given entity.
 
 
@@ -73,7 +74,7 @@ Note that aside from the common publications, Bob has no other entities associat
 We see that the document of Bob is shorter than the one of Alice, because he has less associated entities. We also notice that the Alice's document fully contains the Bob's document.
     
 The colored terms represent the current search query - if Alice only published papers on the topic of the query with Bob, the term frequency of the 
-query in Bob's document would be strictly higher, because of the shorter length.
+query in Bob's document would be strictly higher, because of the shorter document length.
 In case Alice also publishes on the topic with other co-authors, it gets harder to reason about which of the term frequencies is higher.
 
 The relation between the tf-idf scores of the documents of Alice and Bob is expressed as follows:
@@ -172,9 +173,17 @@ looking for the most-relevant class or publication, but for the most-relevant pe
 This might lead to a lot of unnecessary data retrieval and processing and become the bottleneck for the possible applications built on such data.
 
 
-\section{Benchmarks}
+\section{Assessing reranking performance}
 
 To determine the performance of our proposed re-ranking solution, we establish benchmarks to compare the results of the traditional tf-idf based search engine with the social network enhanced search engine.
+
+Even though we have only talked about person entities in the previous sections, we will conduct the benchmarking on the ranking of the search results for \textbf{publication} records.
+This is because the publications are uniquely identifiable (unlike people - see \ref{sec:inferring-missing-identities} for more details) 
+and they have implicit textual content associated with them - the title, abstract and keywords.
+Note that the issues from \ref{search-ranking-issues} still apply for the publications - \cite{aseo} mention different approaches to \ac{ASEO}.
+By overusing certain keywords in the publication titles and abstracts, the authors can artificially increase the relevance of their publications to the search queries.
+
+\subsection{Benchmarking the search results ranking}
 
 The common denominator for many of the ranking measures - like discounted cumulative gain or mean reciprocal rank - is the \textit{user interaction}.
 The user is presented with the search results and picks the most relevant one or scores the results based on the relevance to the query.
@@ -443,7 +452,7 @@ However, this does not pose a serious problem to our benchmark.
 Firstly, we are not trying to predict the exact ranking of the search results, but rather to assign a relevance score to each search result. 
 The peak of the distribution is at the top of the rankings, 
 which is in line with the well known tendency of human users 
-to have much clearer opinion about the few top results than the long tail of the search results (\cite{9357332}).
+to have much clearer opinion about the few top results than the long tail of the search results (as described by e.g. \cite{9357332}).
 
 Secondly, the left-skewed distribution might be caused by non-uniform lengths of the search result lists. 
 Since for some of the queries, Scopus returns only a few relevant search results (100 is only the maximum limit), 
