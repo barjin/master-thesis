@@ -101,8 +101,9 @@ and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of 
 
     In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the \ac{UKČO} personal number is not always available.
     This is because of external authors, who are not affiliated with the university and do not have a \ac{UKČO} personal number.
-What is worse, such authors are only identified by their name and academic titles, which can be inconsistent across the publications.
-This is again caused by the limited interoperability of the \ac{OBD} and \textit{Studium} modules.
+What is worse, such authors are only identified by their name, which can be inconsistent across the publications.
+This is again caused by the limited interoperability of the data source modules - however, note 
+that this problem is present in larger academic search engines (e.g. Google Scholar) too.
 
 Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
 this also poses a challenge for the social network analysis, as the graph algorithms might not be able 

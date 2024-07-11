@@ -65,12 +65,39 @@ the relevance of their publications to the search queries by deliberately overus
 As the main goal of this thesis is improving the user experience of the Charles Explorer application,
 we briefly mention the existing systems that are used for the academic research result retrieval and their features.
 
-\textbf{Google Scholar} is the most popular academic search engine.
-According to the documentation\footnote{\url{https://scholar.google.com/intl/en/scholar/inclusion.html}}, the system crawls internet for well-formed academic publications and indexes them automatically. 
+\textbf{Google Scholar} is a popular academic search engine maintained by Google LLC IPA.
+According to the documentation\footnote{\url{https://scholar.google.com/intl/en/scholar/inclusion.html}}, the system crawls the Internet for well-formed academic publications and indexes them automatically. 
+\cite{google-scholar-size-estimation-2014} estimated the size of the Google Scholar index to be around $99.8$ million documents in 2014.
+Later estimates by \cite{google-scholar-size} put the size of the Google Scholar index at around $389$ million documents in 2019.
 
+While the automated approach to the indexing of the documents allows for the inclusion of a large number of documents, 
+\cite{predatory-google-scholar-scopus} claims it might lead to the inclusion of low-quality or predatory publications.
 
+Because of the automatic indexing approach - and the possibility of irregular schema of the indexed documents stemming from this -
+the Google Scholar index also does not feature search on metadata like author / organization affiliations.
+Many publications are also missing the links to the author profiles (authors are often only mentioned by their name), 
+which makes the exploration of the social network of researchers difficult.
 
+\textbf{Scopus} is a subscription-based academic search engine maintained by Elsevier.
+\cite{google-scholar-size-estimation-2014} estimated the size of the Scopus index to be around $53.4$ million documents in 2014.
 
+According to the documentation\footnote{\url{https://www.elsevier.com/products/scopus/content/content-policy-and-selection}}, contributions to the Scopus index 
+are actively curated by a team of field experts, which allows for the inclusion of high-quality publications.
+Despite this effort, \cite{predatory-scopus} and others claim that the Scopus index still includes a significant number of predatory publications.
+
+Because of the manual curation of the documents, the Scopus web application features a faceted search on various publication metadata
+and relations between the authors, their organizations and the publications themselves.
+
+\textbf{Web of Science} is a subscription-based academic search engine maintained by Clarivate Plc.
+\cite{google-scholar-size-estimation-2014} estimated the size of the Scopus index to be around $56.9$ million documents in 2014.
+Similarly to Scopus, indexing of new publications is actively curated by a team of field experts.
+
+Thanks to the manual curation of the documents, the Web of Science web application also features a faceted search on publication metadata.
+
+\cite{wos-scopus-not-global} compares the coverage of the Web of Science and Scopus indexes and
+points out that neither of the indexes might not fairly represent the global scientific output.
+According to the claims, the indices are biased towards the publications from the English-speaking countries,
+written in English and concerning several specific fields of study.
 
 \section*{Goals of the thesis}
 \addcontentsline{toc}{section}{Goals of the thesis}
@@ -94,7 +121,7 @@ The current state of the visualization also suffers from performance and UX issu
 \section*{Experimental setup}
 
 In various parts of this thesis, we are running different benchmarks and experiments.
-While most of those do not measure the performance of the algorithms, we still want to 
+While most of those do not measure the computational performance of the algorithms, we still want to 
 provide the reader with the information about the hardware and software used in the experiments for full reproducibility.
 
 If not stated otherwise, the experiments were run on a machine with the following specifications:
