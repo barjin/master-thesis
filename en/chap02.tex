@@ -1,6 +1,6 @@
 \chapter{Data models and transformations}
 
-The data about the academic researchers and their publications at CUNI is internally stored in a relational database. 
+The data about the academic researchers and their publications at \ac{CUNI} is internally stored in a relational database. 
 The first chapter of this thesis explores the transformation of the relational data model into a graph data model, 
 which will allow us to use the graph algorithms for the social network analysis.
 
@@ -14,12 +14,12 @@ The Charles University information system is composed of a set of separate syste
 The \textit{Studium} information system\footnote{Available at \url{https://is.cuni.cz/studium/}.} contains the data about the researchers, teachers, the courses and study programmes available at the university.
 
 The \textit{Věda} information system\footnote{Available at \url{https://is.cuni.cz/veda/}, login only.} aggregates the data about creative activities of the researchers, the research projects and inter-university mobility programmes.
-For the purpose of this thesis, we are mostly interested in the OBD (or Verso) module, containing the data about the academic publications.
+For the purpose of this thesis, we are mostly interested in the \ac{OBD} (or Verso) module, containing the data about the academic publications.
 
 The \textit{Whois} staff information system\footnote{Available at \url{https://is.cuni.cz/webapps/whois2}.} contains the data about the employees of the university, 
 their affiliations with the faculties and departments and their academic titles.
 
-While none of the systems offer public APIs, a data import pipeline has been set up by the university's IT department (ÚVT) in advance
+While none of the systems offer public APIs, a data import pipeline has been set up by \ac{ÚVT} (the university's IT department) in advance
 for the purpose of the Charles Explorer application. 
 This pipeline consists of a set of database views tracking the changes in the data and a script\footnote{\url{https://gitlab.mff.cuni.cz/barj/charles-explorer/-/blob/master/scripts/export.sh}} that exports the data to an SQLite database.
 
@@ -47,7 +47,7 @@ The social network-relevant data accessible in the following three database view
 
 \begin{Verbatim}[commandchars=\\\{\}]
 PERSON (
-    \verbun{\verbbf{PERSON_ID}}, \verbxs{- UKČO personal number}
+    \verbun{\verbbf{PERSON_ID}}, \verbxs{- \ac{UKČO} personal number}
     PERSON_NAME, \verbxs{- Full name of the person, incl. the academic titles}
     PERSON_WEBSITE, \verbxs{- Personal website of the person}
     \verbun{\verbbf{PERSON_WHOIS_ID}}, \verbxs{- ID of the person in the Whois system}
@@ -56,7 +56,7 @@ PERSON (
 \end{Verbatim}
 
 The \texttt{Person} view contains the data about the academic researchers and teachers at the university.
-While the \texttt{TYPE} column might suggest that the table contains records about external people as well (e.g. guest co-authors of publications published by the CUNI researchers),
+While the \texttt{TYPE} column might suggest that the table contains records about external people as well (e.g. guest co-authors of publications published by the \ac{CUNI} researchers),
 it only contains the data about the people affiliated with the university. The \texttt{TYPE} column is only used to distinguish between the different employment types at the university.
 
 \begin{Verbatim}[commandchars=\\\{\}]
@@ -77,16 +77,16 @@ This schema shows some more issues with the data - the \texttt{PUBLICATION\_KEYW
 as the \texttt{PUBLICATION\_ID} is not unique across the table. This is because the same publication can have multiple records in the table,
 each record representing a different language version of the title, abstract and keywords.
 
-Moreover, the \texttt{PUBLICATION\_KEYWORDS} view does not contain an universally accepted publication identifier (e.g. a DOI or an ISBN) 
+Moreover, the \texttt{PUBLICATION\_KEYWORDS} view does not contain an universally accepted publication identifier (e.g. a \ac{DOI} or an \ac{ISBN}) 
 that would allow us to link the publication to the external sources of the publication data.
-This is because of a technical limitation of the information systems, as the \textit{OBD} module is not fully interoperable with the \textit{Studium} module we are 
+This is because of a technical limitation of the information systems, as the \ac{OBD} module is not fully interoperable with the \textit{Studium} module we are 
 consuming the data from.
 
 \label{sec:pub-author-all}
 \begin{Verbatim}[commandchars=\\\{\}]
 PUBLICATION_AUTHOR_ALL (
     \verbun{PUBLICATION_ID}, \verbxs{- internal ID of the publication}
-    \verbun{PERSON_ID}, \verbxs{- UKČO personal number of the author, if available}
+    \verbun{PERSON_ID}, \verbxs{- \ac{UKČO} personal number of the author, if available}
     PERSON_NAME, \verbxs{- Full name of the author, incl. the academic titles}
 )
 \end{Verbatim}
@@ -99,16 +99,16 @@ and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of 
 
 \section{Inferring missing identities}
 
-In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the UKČO personal number is not always available.
-This is because of external authors, who are not affiliated with the university and do not have a UKČO personal number.
+    In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the \ac{UKČO} personal number is not always available.
+    This is because of external authors, who are not affiliated with the university and do not have a \ac{UKČO} personal number.
 What is worse, such authors are only identified by their name and academic titles, which can be inconsistent across the publications.
-This is again caused by the limited interoperability of the \textit{OBD} and \textit{Studium} modules.
+This is again caused by the limited interoperability of the \ac{OBD} and \textit{Studium} modules.
 
 Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
 this also poses a challenge for the social network analysis, as the graph algorithms might not be able 
 to correctly identify the external authors.
 
-In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the relations mentioning the authors with / without the UKČO personal number are as follows:
+    In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the relations mentioning the authors with / without the \ac{UKČO} personal number are as follows:
 
 \begin{figure}[!ht]
     \captionsetup{width=.9\linewidth}
@@ -154,7 +154,7 @@ See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBL
 
 \footnotetext{PERSON\_ID redacted for privacy reasons, replaced by truncated PERSON\_WHOIS\_ID.}
 
-While there are 5 variants of the same name in the dataset, only one of them is correctly linked to the UKČO personal number.
+    While there are 5 variants of the same name in the dataset, only one of them is correctly linked to the \ac{UKČO} personal number.
 This could have been caused by human error on data input or by the limitations of the source systems. 
 Either way, this creates an unrecoverable loss of information in the dataset.
 
@@ -201,7 +201,7 @@ For the implemetation of the name normalization function, we use the SQLite load
 The transformation itself is done in three steps:
 
 \begin{enumerate}
-    \item Using the \texttt{glib} function \texttt{g\_utf8\_normalize}, the string representation of the name is normalized to the canonical Unicode NFD form.
+    \item Using the \texttt{glib} function \texttt{g\_utf8\_normalize}, the string representation of the name is normalized to the canonical Unicode \ac{NFD} form.
     This step ensures that the byte representation of diacritized characters is now composed of separate characters for the base character and the diacritics (e.g. \texttt{ě}\texttt{(U+011B)} is decomposed to \texttt{e}\texttt{(U+0065)} and \texttt{ˇ}\texttt{(U+02C7)}).
     \item We scan the normalized string and remove all the characters that are not in the range of the Latin alphabet. We convert the all the 
     alphabetic characters to lowercase and replace all the whitespace characters with a single space.
@@ -280,12 +280,12 @@ this would still result in the creation of up to two nodes for the same person (
 
 In an attempt to solve the over-merging issue of the authors with common names in the naïve approach, we slightly modify the algorithm.
 
-Instead of merging the records directly in the database, we can merge the records on-demand in the application's visualization layer.
+Instead of merging the records directly in the database, we merge the records on-demand in the application's visualization layer.
 If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
 we can reuse the naïve approach quite effectively.
 
 By restricting the domain of the mergeable records to a smaller, tighter subcomunity of the graph (i.e. collaborators of one internal author), 
-we can reduce the number of the possible false positives in the merging.
+we reduce the number of the possible false positives in the merging.
 
 Obviously, this approach still carries the risk of the false positives in case of different external authors with the same name in the same subcommunity.
 
@@ -400,7 +400,7 @@ USING(PUBLICATION_ID)
 WHERE X.PERSON_ID < Y.PERSON_ID;
 \end{verbatim}
 \captionsetup{width=.9\linewidth}
-\caption{The SQL query for the monopartite projection of the social network.}
+\caption{The SQL query calculating the monopartite projection of the social network.}
 \label{fig:monopartite-projection}
 \end{figure}
 
@@ -477,7 +477,7 @@ Both algorithms visit the same number of nodes and edges, the only difference is
 At the time of writing this thesis (\today), the vectorized BFS algorithm is not implemented
 in Memgraph or any other major graph database (Neo4j, OrientDB, ArangoDB). 
 While with the vertex identifiers inlined in the query, the Cypher query planner might be able to automatically recognize the 
-need for the vectorized BFS, the obscure nature of this optimization is likely the reason for the lack of the implementation.
+need for the vectorized BFS, the obscure nature of the use case is likely the reason for the lack of the implementation.
 
 Because of this, we implement our own distance matrix calculator based on the vectorized BFS algorithm in C++\footnote{Implementation at \url{https://github.com/barjin/master-thesis/tree/main/examples/distance-matrix}}.
 This program takes the graph data - i.e. the output of \hyperref[fig:monopartite-projection]{Figure \ref*{fig:monopartite-projection}} - in CSV format and parses the data into an in-memory graph representation.

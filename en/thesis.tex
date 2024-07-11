@@ -57,6 +57,7 @@
 \usepackage{fancyvrb}
 \usepackage{relsize}
 \usepackage{algpseudocode}
+\usepackage{acro}
 
 \newcommand\verbbf[1]{\textbf{#1}}
 \newcommand\verbun[1]{\underline{#1}}
@@ -101,15 +102,21 @@ fonttitle=\bfseries,#1}
 % An optional dedication: you can thank whomever you wish (your supervisor,
 % consultant, a person who lent the software, etc.)
 \def\Dedication{%
-The dedication goes here. (TODO!)
+I would like to express my gratitude to prof. RNDr. Tomáš Skopal, PhD., for his scholarly leadership 
+and for the time and advice he has given me during the writing of this thesis. 
+I would also like to extend my thanks to my family and friends, who have supported and encouraged me 
+greatly during my studies.
 }
 
 % Abstract (recommended length around 80-200 words; this is not a copy of your thesis assignment!)
-\def\Abstract{%
-The goal of this thesis is to explore the use of social networks in document retrieval in the context of academia. 
-In the first part of the thesis, we infer various types of social networks from the freely accessible data about the publications and researchers affiliated with the Charles University. During this, we discover different metrics on the data, explaining their value for academic collaboration.
-In the latter part of the thesis, we look into utilizing the social network model for re-ranking search results in the Charles Explorer web application. We also try to implement an experimental visualizing tool for the data as a part of the Charles Explorer application.
-In the conclusion we address some issues we've encountered during the development and data exploration, and we suggest ideas for further research.
+\def\Abstract{
+While university information systems usually have detailed data about courses, publication and lecturers, 
+they rarely mine the relationships between these entities to provide additional value to the users.
+In this thesis, we aim to improve the Charles Explorer web application by utilizing the synthesized academic social network from the existing relational data.
+We propose a pipeline for transforming relational data from the university systems into a graph representation of the academic social network. 
+We explore the network and propose various ways of utilizing the graph model for inferring missing data. 
+Later, we benchmark different re-ranking strategies using the social network metrics against existing academic search engines and show that the social network-based re-ranking can improve the search results ranking.
+Lastly, we reimplement the tool for visualising the academic social network in the Charles Explorer application for better user experience.
 }
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces
@@ -125,6 +132,48 @@ In the conclusion we address some issues we've encountered during the developmen
 
 % Definitions of macros (see description inside)
 \include{macros}
+
+\acsetup{
+	make-links = true,
+}
+\DeclareAcronym{GNN}{
+	short = GNN,
+	long = graph neural network
+}
+\DeclareAcronym{CUNI}{
+	short = CUNI,
+	long = Charles University
+}
+\DeclareAcronym{OBD}{
+	short = OBD,
+	long = Osobní bibliografická databáze (Personal Bibliographic Database)
+}
+\DeclareAcronym{ÚVT}{
+	short = ÚVT,
+	long = Ústav výpočetní techniky (Computer Science Centre)
+}
+\DeclareAcronym{DOI}{
+	short = DOI,
+	first-style = short,
+	long = Digital Object Identifier
+
+}
+\DeclareAcronym{ISBN}{
+	short = ISBN,
+	first-style = short,
+	long = International Standard Book Number
+}
+\DeclareAcronym{UKČO}{
+	short = UKČO,
+	first-style = short,
+	long = Číslo osoby (Person ID in the CU information system)
+}
+\DeclareAcronym{NFD}
+{
+	short = NFD,
+	first-style = short,
+	long = Normalization Form D
+}
 
 % Title page and various mandatory informational pages
 \begin{document}
@@ -158,6 +207,12 @@ In the conclusion we address some issues we've encountered during the developmen
 %%% Abbreviations used in the thesis, if any, including their explanation
 %%% In mathematical theses, it could be better to move the list of abbreviations to the beginning of the thesis.
 \chapwithtoc{List of Abbreviations}
+\printacronyms[
+	heading=none,
+	display=used,
+	sort=true,
+]
+
 
 %%% Attachments to the master thesis, if any. Each attachment must be
 %%% referred to at least once from the text of the thesis. Attachments
