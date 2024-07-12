@@ -166,3 +166,45 @@ On the other hand, the Katz centrality can be calculated more efficiently - sinc
 the attenuation factor $\alpha$, the importance of the nodes that are further away from the central node is discounted
 and the centrality measure can be approximated by truncating the sum at a certain small value of $k$.
 \end{mybox}
+
+\subsection{Classifier evaluation metrics}
+
+In the context of this thesis, the social network metrics are used to evaluate 
+the performance of the classifiers that are run on the social network data.
+
+This section introduces the most common classifier evaluation metrics that are used in the thesis.
+
+\begin{definition}[Precision]
+    The \textit{precision} of a classifier is the ratio of the true positive predictions to the total number of positive predictions.
+    $$
+    \text{precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}
+    $$
+\end{definition}
+
+\begin{definition}[Recall]
+    The \textit{recall} of a classifier is the ratio of the true positive predictions to the total number of actual positive instances.
+    $$
+    \text{recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}
+    $$
+\end{definition}
+
+\begin{definition}[F1 score]
+    The \textit{F1 score} of a classifier is the harmonic mean of the precision and recall.
+    $$
+    \text{F1} = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
+    $$
+\end{definition}
+
+\begin{definition}[Macro-averaged F1 score]
+    For a multi-class classification task, the \textit{macro-averaged F1 score} is the average of the F1 scores for each class.
+    $$
+    \text{macro-F1} = \frac{1}{n} \sum_{i=1}^{n} \text{F1}_i
+    $$
+\end{definition}
+
+\begin{definition}[Micro-averaged F1 score]
+    For multi-class classification tasks, the \textit{micro-averaged F1 score} is the F1 score calculated from the total number of true positives, false positives, and false negatives.
+    $$
+    \text{micro-F1} = 2 \cdot \frac{\sum_{i=1}^{n} \text{TP}_i}{\sum_{i=1}^{n} \text{TP}_i + \sum_{i=1}^{n} \text{FP}_i + \sum_{i=1}^{n} \text{FN}_i}
+    $$
+\end{definition}

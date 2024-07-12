@@ -251,26 +251,15 @@ Even with the reduced number of operations, the composed scalar functions seem t
 The Python reference implementation is expectedly much slower than both the SQLite extension and the composed scalar functions.
 This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - as compared to the native data access of the SQLite extension.
 
-\textbf{Results assessment}\label{sec:results-assessment}
-
-After the normalization and aggregating the records using the normalized names,
-we get \texttt{240001} distinct normalized names in the dataset.
-
-% todo factcheck
-The most frequent external author was \textit{B. Abbott} with $1393$ records, followed by $G. Aad$ with $1191$ records.
-This raises concerns about the uniqueness of the normalized names - as with $1339$ coauthored publications, \textit{B. Abbott} would be the 99.9 percentile (or the top 7th author),
-compared to the internal authors with known identifiers.
-
 \textbf{Issues with the naïve approach}
 
 While the naïve approach is simple and straightforward, it poses several issues.
+Firstly, name based merging can be cause over-merging in the case of the authors with common names.
 
-Firstly, name-based merging can be problematic in the case of the authors with common names, as likely seen in the \hyperref[sec:results-assessment]{results assessment}.
-
-Secondly, there is no support for the existing identifiers from the dataset.
+Secondly, in the proposed algorithm there is no support for the existing identifiers from the dataset.
 By only inferring the identifier from the name, we willingly discard the existing information about the person.
 
-This could be partially solved by coalescing the inferred identifiers with the existing ones.
+The latter problem could be partially solved by coalescing the inferred identifiers with the existing ones.
 Using the SQL \texttt{COALESCE} function, we can create a new column in the \texttt{PUBLICATION\_AUTHOR\_ALL} view that would contain the inferred identifier only if the original one is missing.
 
 However, such approach would only fully work in the case of only internal - or only external authors.
@@ -279,7 +268,7 @@ this would still result in the creation of up to two nodes for the same person (
 
 \begin{mybox}{``On-demand'' naïve identity inference}
 
-In an attempt to solve the over-merging issue of the authors with common names in the naïve approach, we slightly modify the algorithm.
+In an attempt to first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
 
 Instead of merging the records directly in the database, we merge the records on-demand in the application's visualization layer.
 If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
@@ -294,6 +283,55 @@ Also note that this approach only improves the user experience with the applicat
 Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
 \end{mybox}
 
+\textbf{Results evaluation}\label{sec:results-assessment}
+
+Even though the missing identifiers of the external authors make actual evaluation of this method impossible, 
+we can assess the effectiveness of the naïve merging approach on the set of the \textbf{internal authors} (i.e. authors with existing explicit indentifiers).
+By comparing the identities inferred by the proposed method with the actual existing identifiers, we evaluate the accuracy of the method.
+
+Note that this only works under the assumption that the names of the external (no-identifier) authors follow a similar distribution as the names of the internal authors.
+While this might not be completely true - as external authors might e.g. be more likely to be foreign nationals, perhaps with different naming conventions - we consider this assumption a reasonable simplification.
+
+To define metrics for the evaluation, let us first reformulate the identity inference \textit{on the labeled data} as a classification problem:
+
+For a normalized variant of a name $n$, the predictor $f$ returns (inferred) identifier $i$, such that:
+$$
+f(n) = MIN(\{\text{r.PERSON\_ID}\;|\;\text{r.PERSON\_NORM\_NAME} = n\})
+$$
+
+\begin{itemize}
+    \item The target classes for the classification are the \textit{internal author identifiers} (identities). 
+    \item For a given normalized name, the predictor returns the \textit{minimal} author identifier with the corresponding normalized name (using e.g. the lexicographical order).
+    \begin{itemize} 
+        \item While sampling the identifiers from a probability distribution based on the number of publications of the given person would be more accurate,
+        this would require the knowledge of the publication counts of the external authors - which is not available to us (each external author is connected to only one publication).
+        
+        We also assume that the number of different external authors of the same name is small - and that the authors with the same name are likely to be the same person.
+    \end{itemize}
+\end{itemize}
+
+Note that this proposed classifier is simply grouping all the records with the same normalized name together under one deterministically selected identifier.
+
+As we now defined the algorithm as a classification problem, we can use the standard classification metrics to evaluate the performance of the method.
+Since the task is a multi-class classification, we calculate the \textit{macro} and \textit{micro-$F_1$ score}.
+
+For the dataset of $39523$ known-distinct internal authors, the grouping by the normalized names results in $35610$ merged records.
+As predicted in the previous section, the method likely merges people with the same name together.
+The evaluation metrics of the naïve merging method are as follows:
+
+\begin{figure}[!ht]
+    \captionsetup{width=.9\linewidth}
+    \centering
+    \begin{tabular}{|c|c|}
+    \hline
+        \textbf{Method} & \textbf{Value} \\ \hline
+        Macro-averaged $F_1$ score & 0.874959 \\ \hline
+        Micro-averaged $F_1$ score & 0.900994 \\ \hline
+    \end{tabular}
+    \caption{The evaluation metrics of the naïve merging method\protect\footnotemark.}
+\end{figure}
+
+\footnotetext{The SQL-only implementation of both evaluation metrics is available in the GitHub repository of this thesis.} %TODO SQL LINK
 
 \subsection{Distance-based hierarchical clustering}
 
@@ -316,7 +354,9 @@ We define the merging process as follows:
     \begin{enumerate}
         \item Using the \hyperref[sec:naive-approach]{naïve approach}, we find all merge candidates for the selected node. Note that we are using the normalized name equality as the requirement for the merge.
         \item We calculate the distance matrix between the selected node and all the merge candidates.
-        \item Using a hierarchical clustering algorithm, we cluster the data points based on the distance matrix. We select the cut-off distance based on the distance distribution.
+        \item Using a hierarchical clustering algorithm, we cluster the data points based on the distance matrix. 
+        We use a preselected threshold distance to determine the mergeability of the nodes.
+        \item We use the clustering results to merge all nodes belonging to the same cluseters.
     \end{enumerate}
     \item Go to step 2 until all the non-identifier nodes are merged.
 \end{enumerate}
@@ -444,7 +484,7 @@ for $deg(v)$ being the \hyperref[def:node-degree]{degree} of the publication nod
 
 \end{mybox}
 
-The algorithm itself is quite simple and differs from the regular BFS approach only in several details.
+The algorithm itself is quite simple and differs from the regular BFS approach only in a handful of details.
 The following pseudocode example describes the vectorized BFS algorithm:
 
 \begin{algorithmic}[1]
@@ -520,3 +560,24 @@ For the purpose of this thesis, we will be using specifically the bottom-up aggl
 
 The Python library \texttt{scipy} provides an implementation of the hierarchical clustering algorithm in the \texttt{scipy.cluster.hierarchy} module.
 Applying this algorithm to the distance matrices calculated in the previous step, we can cluster the nodes based on the distance matrix.
+
+For a list of nodes, we assume the algorithm to return a ``cluster list'' - a list of the node sets representing different clusters.
+
+\subsubsection{Results evaluation}
+
+As with the \hyperref[sec:results-assessment]{naïve approach evaluation}, we evaluate the performance of the hierarchical clustering method on the set of the internal authors,
+as we have the ground truth for the identities of these authors.
+
+The \textit{merging algorithm to multi-class classifier} mapping works in this case as well, with slight differences.
+For the purpose of the evaluation, we again reformulate the identity inference as a classification problem:
+
+For a node $n$ without an identifier and a (generated) cluster $C_{\text{n}}$ containing $n$ (and some other nodes with the same normalized name),
+the predictor $f$ returns (an inferred) identifier $i$, such that:
+
+$$
+f(n, C_{n}) = \min(\{\text{r.PERSON\_ID} \mid r \in C_{n}\})
+$$
+
+Just like in the naïve case, we simply group all the nodes in the cluster under the minimal identifier - but now only in the context of the cluster.
+Note that in a case of a degenerated clustering algorithm always returning a single cluster containing all nodes with the same normalized name, the proposed algorithm would yield the same results as the naïve approach.
+
