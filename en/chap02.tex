@@ -97,7 +97,7 @@ With the most naive approach, the transformation of the relational data model in
 \texttt{PERSON} and (deduplicated) \texttt{PUBLICATION\_KEYWORDS} views into the nodes of the graph, 
 and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of the graph.
 
-\section{Inferring missing identities}\label{sec:inferring-missing-identities}
+\subsection{Missing identities}\label{sec:inferring-missing-identities}
 
     In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the \ac{UKČO} personal number is not always available.
     This is because of external authors, who are not affiliated with the university and do not have a \ac{UKČO} personal number.
@@ -126,7 +126,7 @@ to correctly identify the external authors.
 We see that the no-identifier authors take up to 45\% of the total count of the relations.
 This explains the importance of the problem of inferring the missing identities.
 
-\subsection{Naïve approach}\label{sec:naive-approach}
+\section{Identity inference - Naïve approach}\label{sec:naive-approach}
 
 The naïve solution to this problem is using the \textit{names} for the identity inference 
 in case of missing identifiers.
@@ -196,7 +196,7 @@ we can proceed with the merging of the records using SQL GROUP BY and the aggreg
     This allows us to define the normalization function in C and load it as a scalar function in the SQLite database.
 \end{mybox}
 
-\textbf{Implementation}
+\subsection{Implementation}
 
 For the implemetation of the name normalization function, we use the SQLite loadable extensions mechanism.
 The transformation itself is done in three steps:
@@ -218,7 +218,7 @@ For reference purposes, we also implement the same normalization function using 
 This implementation loads the data from the database, normalizes the names using a Python function, and writes the normalized names into a new table.
 The implementation can also be found in the GitHub repository\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-python}}.
 
-\textbf{Performance}
+\subsection{Performance}
 
 As mentioned in the infobox above, the SQLite extension for normalizing the names should provide a performance improvement over the composed scalar functions.
 To test this hypothesis, we repeatedly construct a temporary table with the normalized names using the both scalar functions and the extension.
@@ -251,9 +251,9 @@ Even with the reduced number of operations, the composed scalar functions seem t
 The Python reference implementation is expectedly much slower than both the SQLite extension and the composed scalar functions.
 This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - as compared to the native data access of the SQLite extension.
 
-\textbf{Issues with the naïve approach}
+\subsection{Issues with the naïve approach}
 
-While the naïve approach is simple and straightforward, it poses several issues.
+While the name-based merging approach is simple and straightforward, it poses several issues.
 Firstly, name based merging can be cause over-merging in the case of the authors with common names.
 
 Secondly, in the proposed algorithm there is no support for the existing identifiers from the dataset.
@@ -283,7 +283,7 @@ Also note that this approach only improves the user experience with the applicat
 Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
 \end{mybox}
 
-\textbf{Results evaluation}\label{sec:results-assessment}
+\subsection{Results evaluation}\label{sec:results-assessment}
 
 Even though the missing identifiers of the external authors make actual evaluation of this method impossible, 
 we can assess the effectiveness of the naïve merging approach on the set of the \textbf{internal authors} (i.e. authors with existing explicit indentifiers).
@@ -333,16 +333,17 @@ The evaluation metrics of the naïve merging method are as follows:
 
 \footnotetext{The SQL implementation of both evaluation metrics is available in the \href{https://github.com/barjin/master-thesis/tree/main/examples/naive-merging-eval}{GitHub repository}.}
 
-\subsection{Distance-based hierarchical clustering}
+\section{Identity inference - Hierarchical clustering}
 
 To solve the issues of the naïve approach, we can try to use the graph structure of the data to infer the missing identities.
-One of the possible approaches is to use the \textit{hierarchical clustering} methods to group the nodes from similar parts of the graph together.
+In the following subsection we propose an algorithm using the \textit{hierarchical clustering} methods to group the nodes from similar parts of the graph together.
+In the end of the subsection, we evaluate the performance of the proposed method on the labeled data.
 
 In the realm of data mining and statistics, \textit{hierarchical clustering} is an umbrella term for a set of unsupervised learning algorithms for grouping
 given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In case of top-down clustering, the process is reversed.}
 The distance metric used for the clustering can be any metric that defines the similarity between the data points.
 
-\subsubsection{Algorithm}\label{sec:distance-based-hierarchical-clustering}
+\subsection{Algorithm}\label{sec:distance-based-hierarchical-clustering}
 
 In the case of our dataset, we can use the shortest path distance between the nodes in the graph as the distance metric.
 
@@ -353,10 +354,10 @@ We define the merging process as follows:
     \item Select an arbitrary unmerged node without an identifier.
     \begin{enumerate}
         \item Using the \hyperref[sec:naive-approach]{naïve approach}, we find all merge candidates for the selected node. Note that we are using the normalized name equality as the requirement for the merge.
-        \item We calculate the distance matrix between the selected node and all the merge candidates.
+        \item We calculate the distance matrix between all the merge candidates.
         \item Using a hierarchical clustering algorithm, we cluster the data points based on the distance matrix. 
-        We use a preselected threshold distance to determine the mergeability of the nodes.
-        \item We use the clustering results to merge all nodes belonging to the same cluseters.
+        We use a static preselected threshold condition to determine the cluster boundaries (or mergeability of the node groups).
+        \item We use the clustering results to merge all nodes belonging to the same clusters.
     \end{enumerate}
     \item Go to step 2 until all the non-identifier nodes are merged.
 \end{enumerate}
@@ -372,13 +373,13 @@ In case there are two merge candidates (based on the naïve mergeability require
 these should not be considered \textit{mergeable}, as the publication is expected to list unique authors - i.e. the candidates are
 different people with the same name.
 
-\subsubsection{Implementation}
+\subsection{Implementation}
 
 The \hyperref[sec:distance-based-hierarchical-clustering]{proposed algorithm} 
 is computationally expensive. The distance matrix calculation has a time complexity of $O(n^2)$
 and the standard hierarchical agglomerative clustering algorithm has a time complexity of $O(n^3)$.
 
-\textbf{Distance matrix calculation}
+\textbf{Distance matrix calculation}\textsuperscript{\href{https://barjin.github.io/edu/thesis-blog/inference-distance-matrix/\#distance-matrix-calculation}{[blog]}}
 
 Loading the social network into Memgraph\footnote{An open-source in-memory graph database. Available at \url{https://memgraph.com/}.}
 , we quite easily implement the calculation of the distance matrix between the merge candidates using the Cypher graph query language.
@@ -464,8 +465,6 @@ k = \binom{deg(v)}{2}
 $$
 
 for $deg(v)$ being the \hyperref[def:node-degree]{degree} of the publication node $v$.
-
-\newpage
 
 \begin{mybox}
     {Optimization: BFS ``vectorization''}
@@ -553,26 +552,90 @@ The parallelization itself is quite straightforward, as \textit{VectorizedBFS} i
 
 This approach comes out as the most performant, with the mean time of $0.45\text{ ms}$ per pair of nodes.
 
-\textbf{Hierarchical clustering}
+\subsection{Clustering process}\label{sec:clustering-process}
 
 After calculating the distance matrix, we can proceed with the hierarchical clustering algorithm.
 For the purpose of this thesis, we will be using specifically the bottom-up agglomerative clustering algorithm.
 
-The Python library \texttt{scipy} provides an implementation of the hierarchical clustering algorithm in the \texttt{scipy.cluster.hierarchy} module.
-Applying this algorithm to the distance matrices calculated in the previous step, we can cluster the nodes based on the distance matrix.
+Unlike the naïve approach, the hierarchical clustering algorithm is parametrizable. Note that in the step $2(c)$ of the proposed algorithm, 
+we are mentioning a \textit{static preselected threshold condition} for the cluster boundaries.
 
-For a list of nodes, we assume the algorithm to return a ``cluster list'' - a list of the node sets representing different clusters.
+Any bottom-up hierarchical clustering algorithm starts with original datapoints as separate clusters and iteratively merges the closest clusters together - until there is only one cluster left.
+We need to break down the hierarchy of recursively merging clusters into the disjoint groups of nodes with the same inferred identifier.
 
-\subsubsection{Results evaluation}
+\cite{cophenetic} define the \textit{cophenetic value} (or \textit{cophenetic distance}) of two clusters as the distance at which the two clusters are merged.
+Considering a maximum cophenetic value $c_{\text{max}}$, we can define a stopping criterion for the hierarchical clustering algorithm.
 
-As with the \hyperref[sec:results-assessment]{naïve approach evaluation}, we evaluate the performance of the hierarchical clustering method on the set of the internal authors,
+If the two clusters we are about to merge are at the distance $c_{\text{max}}$ or further apart, we stop the merging process and 
+return the currently existing clusters as the final grouping.
+
+As mentioned earlier, the closest distance between two mergeable candidates in our graph is $4$. 
+This is because two person nodes we can consider to be mergeable have to be connected to two different publication nodes.
+These publication nodes need to be connected by - at least - one other person node.
+
+Since the best choice for the cutoff distance is unclear, we will later evaluate the performance of the hierarchical clustering algorithm for different threshold values.
+
+\subsection[Results evaluation]{Results evaluation\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/inference-hierarchical/}{[blog]}}}
+
+As with the \hyperref[sec:results-assessment]{naïve approach}, we evaluate the performance of the hierarchical clustering merge on the set of the \textit{internal authors},
 as we have the ground truth for the identities of these authors.
 
-The \textit{merging algorithm to multi-class classifier} mapping works in this case as well, with slight differences.
+However, since this method uses the graph data structure, we need to slightly edit the graph on the labeled data,
+so it resembles the data with the missing identifiers better.
+
+Firstly, the external (no-identifier) authors are always associated with a single publication only. 
+Therefore, for evaluation, we split the internal authors into multiple nodes - each representing a single ``authorship'' of a publication.
+We then connect these nodes to the respective publication node.
+
+Note that only splitting the internal authors into multiple nodes would result in a severely disconneted graph
+- each publication would be a separate connected component.
+This would effectively disable the hierarchical clustering algorithm based on the path lengths between 
+individual merge candidates. 
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.7\textwidth]{../img/merging-splitting-internals.png}
+    \centering
+    \caption{The splitting of the internal authors into multiple nodes. Encircled nodes represent the original author identities. Note that the resulting graph is disconnected.}
+\end{figure}
+
+We can see that for a single set of merge candidates - i.e. nodes with the same normalized name - 
+most nodes would end up in separate connected components after the splitting (with the exception of two different people with the same normalized name collaborating on the same publication).
+
+We solve this issue by reintroducing the original internal author nodes into the graph.
+This operation requires attention too, though. 
+Consider a merge candidate set $\mathbf{C}$ consisting solely of the ``authorship'' nodes for a single internal author.
+After returning the original author node to the graph, the distance matrix for $\mathbf{C}$ would degenerate to
+$$
+D_{\mathbf{C}} = \mathbf{4} - 4\mathbf{I_n} = \left( \begin{array}{cccc}
+0 & 4 & 4 & \hdots \\
+4 & 0 & 4 & \hdots \\
+4 & 4 & 0 & \hdots \\
+\vdots & \vdots & \vdots & \ddots
+\end{array} \right)
+$$
+
+This is because one of the shortest paths between the authorship nodes would always lead through the \textbf{original author node},
+which is connected to both ends' publications.
+
+During the distance matrix calculation in the vectorized BFS algorithm, we solve this by introducing a \textit{forbidden}
+set of nodes. This set contains the nodes that are not allowed to be visited during the BFS run.
+For each BFS run, we add the original author node to the forbidden set, effectively preventing the BFS algorithm from visiting the node.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.7\textwidth]{../img/merging-splitting-reintroduced.png}
+    \centering
+    \caption{Graph after reintroducing the original author nodes (blue). The graph is now connected. Note that for calculating the distance between two split ``authorship'' nodes, we forbid the BFS algorithm from visiting their original author node.}
+\end{figure}
+
+\subsubsection{Evaluation metrics}
+
+The \textit{merging algorithm to multi-class classifier} mapping introduced in the \hyperref[sec:results-assessment]{naïve approach evaluation} is still valid, with slight differences.
 For the purpose of the evaluation, we again reformulate the identity inference as a classification problem:
 
-For a node $n$ without an identifier and a (generated) cluster $C_{\text{n}}$ containing $n$ (and some other nodes with the same normalized name),
-the predictor $f$ returns (an inferred) identifier $i$, such that:
+\textit{For a node $n$ without an identifier and a (generated) cluster $C_{\text{n}}$ containing $n$ (and some other nodes with the same normalized name),
+the predictor $f$ returns (an inferred) identifier $i$, such that:}
 
 $$
 f(n, C_{n}) = \min(\{\text{r.PERSON\_ID} \mid r \in C_{n}\})
@@ -581,3 +644,31 @@ $$
 Just like in the naïve case, we simply group all the nodes in the cluster under the minimal identifier - but now only in the context of the cluster.
 Note that in a case of a degenerated clustering algorithm always returning a single cluster containing all nodes with the same normalized name, the proposed algorithm would yield the same results as the naïve approach.
 
+As we proposed in the \hyperref[sec:clustering-process]{Subsection \ref*{sec:clustering-process}}, we evaluate the performance of the hierarchical clustering algorithm for different threshold values
+to determine the optimal cutoff distance.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.8\textwidth]{../img/hierarchical-f1.png}
+    \centering
+    \caption{The F1 scores for the hierarchical clustering algorithm for different threshold values.\protect\footnotemark}
+\end{figure}
+
+\footnotetext{Both methods have been reevaluated on a smaller representative subset of data ($n = 500$). For this reason, the naïve approach performance slighly differs from the previous evaluation.}
+
+We notice that for the maximum cophenetic distance $c_{\text{max}} = 2$, the algorithm performance is very poor.
+This is because in such case, the algorithm cannot merge any two merge candidates - as the closest distance between them is $4$.
+In such case the algorithm only correctly classifies the first node in the cluster - the rest of the nodes are classified as separate entities.
+
+We also see that the performance of the hierarchical clustering algorithm is dominated by the naïve approach, regardless the parameters.
+Unsurprisingly, the both methods perform more similar with the increasing cutoff cophenetic distance. 
+This is because the naïve approach is essentially a special case of the hierarchical clustering algorithm with a fixed (infinite) cutoff distance
+ - merging all the nodes with the same normalized name in one cluster.
+
+ The superior performance of the naïve approach is likely caused by the nature of the input data and the variance in the normalized names.
+ While the possibility of splitting the overmerged groups into multiple clusters with the hierarchical clustering algorithm might seem advantageous,
+ we see that it is not the case in the context of the academic social network data.
+
+ Note that the macro F1 score for hierarchical merging continues to grow with the increasing cutoff distance, 
+ meeting the performance of the naïve approach at $1000$. This is because the distance matrix computation tool 
+ denotes “infinite” distance (e.g. between two nodes in two disconnected components of the graph) as $999$.

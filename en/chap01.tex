@@ -72,6 +72,10 @@ This section introduces some of the less common graph-related terms and concepts
     Projection algorithms can produce multiple edges between the nodes in the projection.
     Resolution of this problem largely depends on the specific use case of the projection - e.g. $G'$ can be a multigraph or the edges can be weighted by the number of common neighbors from $V_2$.
     
+\begin{definition}[Connected component]
+    A \textit{connected component} of a graph $G = (V, E)$ is a subgraph $G' = (V', E')$ where all nodes in $V'$ are reachable from each other by traversing the edges in $E'$.
+\end{definition}
+
 \end{definition}
 \section{Social networks}
 
@@ -207,4 +211,7 @@ This section introduces the most common classifier evaluation metrics that are u
     $$
     \text{micro-F1} = 2 \cdot \frac{\sum_{i=1}^{n} \text{TP}_i}{\sum_{i=1}^{n} \text{TP}_i + \sum_{i=1}^{n} \text{FP}_i + \sum_{i=1}^{n} \text{FN}_i}
     $$
+
+    This metric is less susceptible to class imbalance than the macro-averaged F1 score.
+    Each class contributes to the micro-averaged F1 score proportionally to the number of instances in the class.
 \end{definition}
