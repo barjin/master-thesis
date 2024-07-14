@@ -15,9 +15,11 @@
 */
 
 #include "csv.h"
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <queue>
+#include <string>
 #include <thread>
 #include <unordered_set>
 
@@ -141,24 +143,39 @@ class Graph {
     /**
      * "Vectorized" version of get_distance that returns a list of distances
      * between a single start node and multiple other nodes.
+     * If there are no paths connecting the start node to a target node, the
+     * distance is set to 999.
      */
     std::vector<std::uint32_t> get_distance_v(
-        const std::string &from, const std::vector<std::string> &to
+        const std::string &from,
+        const std::vector<std::string> &to,
+        const std::unordered_set<std::string> &forbidden = {}
     ) {
-        std::uint32_t from_id = node_mapping[from];
+        if (node_mapping.find(from) == node_mapping.end()) {
+            auto x = std::find(to.begin(), to.end(), from);
+            auto res = std::vector<std::uint32_t>(to.size(), 999);
+            if (x != to.end()) {
+                res[x - to.begin()] = 0;
+            }
+            return res;
+        }
+        std::uint32_t from_id = node_mapping.at(from);
         std::unordered_set<std::uint32_t> to_ids;
         std::uint32_t found_targets = 0;
 
         for (auto &t : to) {
-            to_ids.insert(node_mapping[t]);
+            if (node_mapping.find(t) != node_mapping.end()) {
+                to_ids.insert(node_mapping.at(t));
+            }
         }
 
         std::vector<bool> visited(node_mapping.size(), 0);
-        std::vector<std::uint32_t> distance(node_mapping.size(), 0);
+        std::vector<std::uint32_t> distance(node_mapping.size(), 999);
 
         std::queue<std::uint32_t> q;
         q.push(from_id);
         visited[from_id] = true;
+        distance[from_id] = 0;
 
         while (!q.empty() && found_targets < to_ids.size()) {
             std::uint32_t current = q.front();
@@ -169,7 +186,9 @@ class Graph {
 
             q.pop();
             for (auto &nei : edges[current]) {
-                if (!visited[nei]) {
+                if (!visited[nei] &&
+                    forbidden.find(reverse_node_mapping[nei]) ==
+                        forbidden.end()) {
                     debug_print(
                         "    Processing neighbor %s\n",
                         reverse_node_mapping[nei].c_str()
@@ -196,33 +215,59 @@ class Graph {
 
         std::vector<std::uint32_t> result;
         for (auto &t : to) {
-            result.push_back(distance[node_mapping[t]]);
+            if (node_mapping.find(t) == node_mapping.end()) {
+                result.push_back(999);
+                continue;
+            }
+            result.push_back(distance.at(node_mapping.at(t)));
         }
 
         return result;
     }
 };
+std::string candidates_input =
+    "1025-roser-fernandezcliment,2-joachim-sodequist,3-xiaoyu-sheng,4-zhizhan-qiu,5-anton-tadich,6-qile-li,out.test.csv;1025-roser-fernandezcliment,2-joachim-sodequist,out.small.csv";
 
-/**
- * A list of public node identifiers to be used as the starting point for the
- * distance calculation.
- */
-std::vector<std::string> merge_candidates = {
-    "1025-roser-fernandezcliment",
-    "2-joachim-sodequist",
-    "3-xiaoyu-sheng",
-    "4-zhizhan-qiu",
-    "5-anton-tadich",
-    "6-qile-li"
-};
-
-int main() {
+int main(int argc, char *argv[]) {
     Graph g;
+
+    std::fstream candidates_stream;
+    candidates_stream.open(argv[1], std::ios::in);
+    std::string candidates_input;
+    std::vector<std::string> candidate_lines;
+
+    while (getline(candidates_stream, candidates_input)) {
+        candidate_lines.push_back(candidates_input);
+    }
+
+    std::vector<std::vector<std::string>> candidates;
+
+    for (auto &line : candidate_lines) {
+        std::vector<std::string> current_candidates;
+        std::string current_candidate;
+
+        for (auto &c : line) {
+            if (c == ',') {
+                current_candidates.push_back(current_candidate);
+                current_candidate.clear();
+            } else {
+                current_candidate.push_back(c);
+            }
+        }
+
+        if (current_candidates.size() > 0) {
+            current_candidates.push_back(current_candidate);
+        }
+
+        candidates.push_back(current_candidates);
+    }
+
+    printf("Candidates loaded, %ld sets\n", candidates.size());
 
     {
         // The file with the edges - the small version is packaged with the
         // repository for testing
-        io::CSVReader<2> in("edges.small.csv");
+        io::CSVReader<2> in("edges.fixed.csv");
         std::string from;
         std::string to;
 
@@ -239,48 +284,63 @@ int main() {
 
     printf("Graph loaded, %d nodes\n", g.node_count());
 
-    std::chrono::steady_clock::time_point begin =
-        std::chrono::steady_clock::now();
+    for (auto &candidates : candidates) {
+        std::chrono::steady_clock::time_point begin =
+            std::chrono::steady_clock::now();
 
-    std::mutex cout_mutex;
-    std::vector<std::thread> threads;
-    std::size_t THREAD_BATCH_SIZE = merge_candidates.size() / THREAD_COUNT;
+        std::ofstream out_file;
+        std::string file_name = candidates.at(candidates.size() - 1);
+        out_file.open(candidates.at(candidates.size() - 1), std::ios::out);
+        candidates.pop_back();
 
-    for (std::uint8_t thread_n = 0; thread_n < THREAD_COUNT; ++thread_n) {
-        threads.push_back(std::thread([&g,
-                                       thread_n,
-                                       THREAD_BATCH_SIZE,
-                                       &cout_mutex] {
-            for (auto &id : std::vector<std::string>(
-                     merge_candidates.begin() + thread_n * THREAD_BATCH_SIZE,
-                     thread_n == THREAD_COUNT - 1 ? merge_candidates.end()
-                                                  : merge_candidates.begin() +
-                             (thread_n + 1) * THREAD_BATCH_SIZE
-                 )) {
-                auto distances = g.get_distance_v(id, merge_candidates);
+        std::mutex cout_mutex;
+        std::vector<std::thread> threads;
+        std::size_t THREAD_BATCH_SIZE = candidates.size() / THREAD_COUNT;
 
-                std::lock_guard<std::mutex> lock(cout_mutex);
-                std::cout << id << ",";
-                for (auto &d : distances) {
-                    std::cout << d << ',';
+        for (std::uint8_t thread_n = 0; thread_n < THREAD_COUNT; ++thread_n) {
+            threads.push_back(std::thread([&g,
+                                           &cout_mutex,
+                                           &out_file,
+                                           thread_n,
+                                           THREAD_BATCH_SIZE,
+                                           candidates] {
+                for (auto &id : std::vector<std::string>(
+                         candidates.begin() + thread_n * THREAD_BATCH_SIZE,
+                         thread_n == THREAD_COUNT - 1 ? candidates.end()
+                                                      : candidates.begin() +
+                                 (thread_n + 1) * THREAD_BATCH_SIZE
+                     )) {
+                    auto person_id = id.substr(0, id.find('-'));
+
+                    auto distances =
+                        g.get_distance_v(id, candidates, {person_id});
+
+                    std::lock_guard<std::mutex> lock(cout_mutex);
+                    out_file << id << ",";
+                    for (auto &d : distances) {
+                        out_file << d << ',';
+                    }
+                    out_file << std::endl;
                 }
-                std::cout << std::endl;
-            }
-        }));
-    }
+            }));
+        }
 
-    for (auto &t : threads) {
-        t.join();
-    }
-    std::chrono::steady_clock::time_point end =
-        std::chrono::steady_clock::now();
+        for (auto &t : threads) {
+            t.join();
+        }
 
-    std::cout << "Duration: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(
-                     end - begin
-                 )
-                     .count()
-              << "ms" << std::endl;
+        out_file.close();
+
+        std::chrono::steady_clock::time_point end =
+            std::chrono::steady_clock::now();
+
+        std::cout << "(" << file_name << ") Duration: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         end - begin
+                     )
+                         .count()
+                  << "ms" << std::endl;
+    }
 
     return 0;
 }
