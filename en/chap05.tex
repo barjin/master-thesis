@@ -1,9 +1,11 @@
 \chapter{Social network boosted search ranking}
 
-Charles Explorer is an academic search engine, which allows the user to search for publications, classes, people and study programmes in the academic domain.
+In the previous chapter, we explored the process of transforming the relational academic data 
+into a true graph representation, including using graph metrics for missing data inference.
 
-The following sections, we look more into the search engine part of the application, explore the possible issues with the search results ranking, 
-and experiment with utilizing the social network data for the search results ranking improvement.
+In this chapter, we focus on the \textit{search engine} part of the Charles Explorer application.
+Using the graph data representation from the previous chapter, we explore the possible issues with the classic 
+document-based search engine and experiment with the social network data for the search results re-ranking.
 
 \section{Full-text search}
 
@@ -12,7 +14,7 @@ Many search engines - including Apache Solr in Charles Explorer - implement the 
 This is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
 
 The TF-IDF algorithm is based on the term frequency and inverse document frequency of the terms in the documents - a \textit{document} is in general unstructured free text content.
-Some entities in our academic search engine map well to this notion of a \textit{document} - e.g. a \texttt{publication} or \texttt{class} both have inherent textual content (titles, abstracts or syllabi).
+Some entities in our academic search engine map well to this notion of a \textit{document} - e.g. a \texttt{publication} or \texttt{class} both have inherent textual content (titles, abstracts or class syllabi).
 Unfortunately, this does not hold for all the entities in the system.
 
 As an example, a \texttt{person} entity usually does not have any explicit textual content associated with it. 
@@ -30,14 +32,13 @@ This is not only inefficient in terms of storage, but also prone to update error
 The second issue arises from the concatenation - if any of the person's associated entities changes, the whole document has to be reindexed.
 However, this might be less of a problem than the first issue, as it's not too common for academic records to get updated or removed - at least in comparison to the number of new records being added.
 
-\subsection{Result ranking in the naive case} \label{search-ranking-issues}
+\subsection{TD-IDF ranking issues} \label{search-ranking-issues}
 
 Result ranking in information retrieval refers to the ordering of the search results when presented to the end user. This is often based on the relevance of the documents to the current search query.
 The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
 
 While it might seem a bit superficial, the ranking is in fact still part of the information retrieval process. 
-%% todo make into citations
-As multiple studies show \footnote{https://link.springer.com/article/10.1007/s11151-014-9435-y}\footnote{https://link.springer.com/article/10.1007/s10791-010-9150-8}, 
+\cite{ranking-user-choice} showed that
 the ranking of the search results positively correlates with the click-through rate of the results 
 - likely because of the typical top-left to bottom-right reading pattern of the users.
 This can be further affected by other, more technical factors - such as the need for an additional user action like scroll or pagination to see the results further down the list.
@@ -77,7 +78,7 @@ The colored terms represent the current search query - if Alice only published p
 query in Bob's document would be strictly higher, because of the shorter document length.
 In case Alice also publishes on the topic with other co-authors, it gets harder to reason about which of the term frequencies is higher.
 
-The relation between the tf-idf scores of the documents of Alice and Bob is expressed as follows:
+The relation between the tf-idf scores of the documents of Alice and Bob can be expressed as follows:
 \begin{subequations}
 \begin{align}
 \text{tf}(q, d_{\text{Bob}}) \times \text{idf}(q, D) &\stackrel{?}{>} \text{tf}(q, d_{\text{Alice}}) \times \text{idf}(q, D) \\
@@ -109,109 +110,242 @@ it is likely that Alice is the more relevant person for the searching user, sinc
 
 \section{Re-ranking}
 
-In the following sections, we go over different existing re-ranking strategies utilized in other systems and explore the possibilities of using the social network data for the re-ranking in Charles Explorer.
+Knowing the theoretical issues of the current Charles Explorer search engine implementation, we try to address them by proposing a system for re-ranking the search results.
+In the following sections, we go over different existing re-ranking strategies utilized in other systems and explore the possibilities of using the social network data 
+for the re-ranking in Charles Explorer.
+
+Even though we have only talked about person entities in the previous sections, we will conduct the all the experiments
+on the ranking of the search results for \textbf{publication} records.
+This is because the publications are uniquely identifiable (unlike people - see \ref{sec:inferring-missing-identities} for more details) 
+and they have implicit textual content associated with them - the title, abstract and keywords.
+
+Note that the issues from \ref{search-ranking-issues} still apply for the publications - \cite{aseo} mention different approaches to \ac{ASEO}.
+By overusing certain keywords in the publication titles and abstracts, the authors can artificially increase the relevance of their publications to the search queries.
+Reranking the publications by a less volatile and less falsifiable metric - like the social network data - might help to mitigate this issue.
 
 \subsection{Existing re-ranking strategies}
 
 In the current (2024) commercial search engines, there are often multiple re-ranking strategies available to the users.
 Unfortunately, only a small portion of the engines actually discloses the details of the re-ranking algorithms used - perhaps to protect the intellectual property and the competitive advantage.
 
-The common grounds for all those systems is the two-stage search pipeline - in the first stage, a traditional search engine is used to retrieve the initial set of results.
+To have a look at the existing re-ranking strategies, we examine the related academic literature on the topic.
+
+\cite{wikipedia-rerank} propose a reranking algorithm for the Wikipedia search engine, ranking the search results based on a current wikipedia page and its linkage (paths in the web graph) to the search results.
+\cite{passage-graph} propose a reranking algorithm for document search using metrics on a \textit{passage graph} - a graph representation of the documents and the passages within them
+with the edges representing the similarity between the passages.
+
+Famously, \cite{pagerank} proposed the PageRank algorithm for the Google search engine.
+The PageRank algorithm itself does not rerank the search results - it is used to produce scoring of the web pages based on the link structure of the web.
+The ranking of the search results is then based on multiple factors, including the PageRank score of the pages.
+
+Note that reranking is not only applicable in the context of search engines - recommender systems use similar strategies of reordering the presented items based on the user's preferences or other factors.
+\cite{personalized-reranking} propose a personalized reranking algorithm for the recommendation systems, which takes into account the user's preferences and the item's popularity.
+See that unlike in the search engines, the reranking in the recommendation systems is based on the user's interactions with the system, rather on the ``global'' statistics of the items.
+
+\subsection{Algorithm}\label{reranking-algorithm}
+
+In the previous subsection, we have listed several exisiting reranking strategies.
+The common base for all these systems is the \textbf{two-stage search pipeline}. 
+In the first stage, a traditional search engine (e.g. TF-IDF based) is used to retrieve the initial set of results. 
 Then, these results are re-ranked using a different algorithm. 
 
-While it might seem redundant, this approach allows the second algorithm to focus only the more relevant results, and be perhaps more computationally expensive.
-Unfortunately, this also means that the re-ranking algorithm is not able to affect the initial search results - it can only change the order of the results.
-It also brings in the issue of pagination - if the user has to go through multiple pages of the search results, the re-ranking might not be as effective,
-as it only affects the current page of the results.
+While this might seem redundant, this approach allows the second algorithm to focus only the more relevant results, 
+and be perhaps more computationally expensive.
+Unfortunately, this also means that the reranking algorithm is not able to affect the initial search results; 
+it can only change the order of the results. It also brings in the issue of pagination - if the user has to go 
+through multiple pages of the search results, the reranking might not be as effective, as it only affects the current page of the results.
 
-The re-ranking algorithms can be based on various factors - the user's previous interactions with the system, total popularity (click-through rate) of the items,
-diversity of the results %link to the MMR papers https://www.google.com/search?client=firefox-b-lm&q=Maximal+Marginal+Relevance 
-or NLP analysis of the documents. Especially the last one seems to be gaining traction in the recent years, as the applications of LLM models are becoming more widespread.
+Based on this framework, we propose a reranking algorithm for the Charles Explorer search engine:
 
-\subsection{Graph data-based reranking}\label{graph-based-reranking}
+\textit{For a query $q$, a set of all publications $D$ and a social network $G$ of all the people and publications in the system, 
+we propose the following reranking algorithm:}
 
-As we discussed in \ref{search-ranking-issues}
-, the traditional tf-idf based search engine might give unsatisfactory results in the case 
-of a proxy-representation of a given entity.
-We might try to address this issue by utilizing the social network data for the re-ranking of the search results.
+\begin{enumerate}
+    \item Retrieve the initial list $R_q$ of search results relevant to $q$, $R_q \subset D$ using the traditional search engine.
+    $R_q$ is an ordered list of publications, ranked by the relevance to the query.
+    \item For every publication $p \in R_q$, get the auxiliary relevance score $s(p)$ \textbf{based on the social network data}.
+    \item Construct a new list $\text{Rank}_q$ with items from $R_q$ and ranking based both on the original relevance scores and the auxiliary relevance scores.
+\end{enumerate}
 
-As mentioned in the previous subsection, many commercial search engines use a two-step search pipeline - the first step retrieves the initial set of results,
-and the second step re-ranks them using a different algorithm. This sounds like a good fit for our problem - we use the traditional tf-idf based search engine 
-to retrieve the initial set of results, and then re-rank them using the social network data. 
+We notice that this algorithm definition is quite abstract - and aside from the mention of the social network data, 
+it does not differ from the general two-stage reranking algorithm definition.
 
-Only using the graph data for the search has several drawback described in the next section (\ref{graph-based-search}).
+However, the third step of the algorithm is not trivial either. The balance of the original relevance scores and the auxiliary relevance scores
+in the final ranking is a task of \textit{multiobjective optimization} and might be hard to solve in a general case.
+Later on, we try to experimentally evaluate the performance of different ranking-combination strategies.
 
-When it comes to reranking the existing search results, we utilize the social network data in several ways.
+In the following sections, we explore different social network metrics that can be used for auxiliary relevance score $s(p)$ calculation.
 
-\begin{itemize}
-    \item \textbf{Global node statistics}: As illustrated on the example of Alice and Bob above, 
-    we can use the global statistics for the nodes in the social network to re-rank the search results. 
-    These include - but are not limited to - the node degree (number of connections), centrality measures, or the number of common neighbours.
+\subsection{Social network metrics for reranking}
 
-    Such statistics can be precomputed for every node in the social network before the search and stay constant over all the search queries.
+The academic social network graph is often large and sparse, as academic systems often accumulate many records over their lifetime.
+This poses a challenge for the social network metrics calculation - the computational complexity of any global graph metric grows 
+with the number of nodes in the graph.
 
-    \item \textbf{Query relevant node statistics}: Unlike the global node statistics, query-relevant node statisics are computed only for the nodes in the search results.
+This combined with the need for the real-time response of the search engine makes the calculation of the global graph metrics infeasible.
+In the following sections, we propose some of the measures defined on close neighbourhoods of the nodes in the graph,
+the performance of which we will later evaluate in the experiments.
+
+\subsubsection{Node degree}
+
+The \textit{degree} of a node $v$ in a graph $G$ is the number of edges incident to $v$.
+$$
+\text{deg}(v) = |N(v)|
+$$
+
+In the case of the publications nodes, the node degree is the number of people that have collaborated on the publication.
+The possible benefit of using this metric is rather clear - we expect that might be a correlation between the number of collaborators on a publication and the 
+global relevance of a publication.
+
+\subsubsection{Neighborhood-separating node cut size}
+
+Similarly to the \textit{node degree}, we define the \textit{neighborhood-separating node cut size} measure.
+For a given node $n$ and its neighbourhood $N(n)$, we define the \textit{neighborhood-separating node cut size} 
+as the number of nodes (outside of $N(n)$) that have to be removed to separate $N(n)$ from the rest of the graph.
+
+In the context of the academic social network, for a publication $p$, this counts the number of other publications the authors of $p$ have authored.
+Note that in case the authors of $p$ have collaborated on some other publications, those still only contribute to the cut size once.
+
+We can also calculate this measure as 
+$$
+\text{cut}(n) = \lvert N_2(n) \rvert - \lvert N_1(n) \rvert
+$$
+
+where $N_k(n)$ is the k-hop neighbourhood of the node $n$.
+
+\subsubsection{Ego betweenness centrality}\label{ego-betweenness}
+
+\textit{Betweenness centrality} of a node $v$ in a graph $G$ is the fraction of all shortest paths that pass through $v$.
+$$
+\text{betw}(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}}
+$$
+where $\sigma_{st}$ is the number of shortest paths between nodes $s$ and $t$, and $\sigma_{st}(v)$ is the number of those paths that pass through $v$.
+
+While this is usually calculated in the context of the entire graph, it is an useful measure for ego-networks too, as it can help us quantify the importance of a node in its local neighbourhood. 
+\cite{egonetworkbetweenness} have shown that for real-life networks, the ego betweenness centrality often correlates with the actual global betweenness of a node in the graph.
+
+In our data, the collaboration graph is bipartite - the nodes are either publications or people and there are no edges between the nodes of the same type.
+This means that the ego betweenness centrality of a publication is in fact proportional to the number of people that have collaborated on the publication.
+
+\subsubsection{2-hop betweenness centrality}
+Similar to the \hyperref[ego-betweenness]{ego betweenness centrality}, we calculate the \textit{2-hop betweenness centrality} as the betweenness centrality of a node 
+in a subgraph induced by the node and its 2-hop neighbourhood.
+
+In our case of the bipartite collaboration graph, the \textit{2-hop betweenness centrality} of a publication is no longer proportional only to the number of people that have collaborated on the publication,
+but also to the \textit{number of other publications that the people have collaborated on}.
+
+Note that this concept can be further extended to the $k$-hop betweenness centrality, but the computational complexity of the centrality calculation grows exponentially with the $k$.
+Materializing the induced subgraphs for the $k$-hop betweenness centrality calculation also poses a challenge in regard to the memory consumption. 
+
+In our experiements, we only use the $1-$ and $2-hop$ neighborhoods for the betweenness centrality calculation, due to the fast growth of the computational complexity with larger $k$.
+
+\subsubsection{Eigenvector centrality}
+The \textit{eigenvector centrality} of a node $v_i$ in a graph $G$ is the sum of the centrality scores of the nodes that are connected to $v$.
+$$
+\text{eig}(v_i) = \frac{1}{\lambda} \sum_{v_j \in N(v)} \text{eig}(v_j)
+$$
+
+where $\lambda$ is a constant. Note that the definition can also be rewritten as 
+$$
+\text{eig}(v_i) = \frac{1}{\lambda} \sum_{v_j \in V} a_{v_i, v_j} \text{eig}(v_i)
+$$
+
+with $a_{vu}$ being the elements of the adjacency matrix of the graph $G$.
+
+Denoting $\mathbf{eig(v)}$ as a vector of eigenvector centralities for all nodes in the graph, the equation can be rewritten as
+
+$$
+\lambda \; \mathbf{eig(v)} = A \; \mathbf{eig(v)}
+$$
+
+where $A$ is the adjacency matrix of the graph $G$. 
+This shows the reasoning behind the name of the centrality measure - the centrality scores are the eigenvectors of the adjacency matrix.
+
+Note that we are mentioning this measure only because of the following mentioned measure.
+We do not calculate the eigenvector centrality in our experiments, as the computational complexity of the centrality calculation is far too high for the large graphs.
+
+\subsubsection{Katz centrality}\label{def:katz-centrality}
+\textit{Katz centrality} is a special case of the eigenvector centrality.
+
+\cite{Katz1953} defines the \textit{Katz centrality} of a node $v_i$ in a graph $G$ as
+$$
+\text{katz}(v_i) = \sum_{k=1}^{\infty} \sum_{j=1}^n \alpha^k (A^k)_{ij}
+$$
+where $\alpha \in (0, 1/\lambda_{\text{max}})$ is a constant, and $\lambda_{\text{max}}$ is the largest eigenvalue of the adjacency matrix $A$.
+
+The Katz centrality counts the number of paths between the central node and all other nodes in the graph.
+For a path of length $k$ is additionally discounted by the \textit{attenuation} factor $\alpha^k$.
+
+The above formula uses the fact that the power of the adjacency matrix $A^k$ counts the number of paths of length $k$ between nodes $i$ and $j$.
+
+\begin{mybox}{}
+As follows from the definitions, the betweenness centrality of a node $v$ is computationally expensive 
+to calculate for large graphs, as it considers all pairs of nodes in the graph.
+
+While e.g. \cite{brandes-faster-centrality} offers an algorithm that reduces the computational complexity of the betweenness centrality calculation,
+the calculation still poses a significant performance bottleneck for large graphs.
+
+\label{katz-faster}
+On the other hand, the Katz centrality can be calculated more efficiently - since the definition introduces 
+the attenuation factor $\alpha$, the importance of the nodes that are further away from the central node is discounted
+and the centrality measure can be approximated by truncating the sum at a certain small value of $k$.
+\end{mybox}
+
+\subsection{Combining the metrics}
+
+In the third step of our proposed \hyperref[reranking-algorithm]{reranking algorithm},
+we want to combine the original relevance scores of the publications with the auxiliary 
+relevance scores based on the social network metrics.
+
+In our experiments, we compare two different strategies for combining the scores:
+
+\begin{enumerate}
+    \item \textbf{Linear combination} - the final relevance score of a publication is a linear combination of the original relevance score and the auxiliary relevance score. 
     
-    These can perhaps define the node's relevance better (e.g. the number of query-relevant publications connected to a given person), but are often more computationally expensive to compute.
-    Given the variability of the queries, it is also harder (or impossible) to precompute these statistics.
-\end{itemize}
+    This includes edge cases of 100\% weight on the original relevance score or the auxiliary relevance score.
 
-%% todo structure
-\subsection{Graph data-based search} \label{graph-based-search}
+    $$
+    \text{final\_score}(p) = \alpha \cdot \text{original\_score}(p) + (1 - \alpha) \cdot \text{auxiliary\_score}(p)
+    $$
+    \item \textbf{Harmonic mean} - the final relevance score of a publication is the harmonic mean of the original relevance score and the auxiliary relevance score.
+    
+    Note that harmonic mean of two numbers $a$ and $b$ is more sensitive to discrepancies between the two numbers than the arithmetic (weighted) mean.
 
-It would also be possible to use the social network data to entirely replace the concatenated person representations in the search engine - we could 
-only search through the ``first-order entities'' (i.e. classes and publications) and then query the social network graph for the people associated 
-with the results of the search. 
-
-This approach has several drawbacks - aside from the questionable performance and scalability / developer effort, it also might not be as effective as the concatenated representation.
-
-With the concatenated approach, we have to retrieve only \textasciitilde{} 30 results (people) for every page of the search results. 
-Those are also already ranked by the relevance to the query - even though this might not be perfect, the tf-idf based ranking is still a good approximation.
-
-With the proposed graph-based approach, we would have to retrieve many more publications and classes on each search - note that we are no longer 
-looking for the most-relevant class or publication, but for the most-relevant person - which is rather an aggregation of the relevance of the associated entities.
-This might lead to a lot of unnecessary data retrieval and processing and become the bottleneck for the possible applications built on such data.
-
-
-\section{Assessing reranking performance}
+    $$
+    \text{final\_score}(p) = \frac{2}{\frac{1}{\text{original\_score}(p)} + \frac{1}{\text{auxiliary\_score}(p)}}
+    $$
+\end{enumerate}
+    
+\section{Benchmarking setup}
 
 To determine the performance of our proposed re-ranking solution, we establish benchmarks to compare the results of the traditional tf-idf based search engine with the social network enhanced search engine.
 
-Even though we have only talked about person entities in the previous sections, we will conduct the benchmarking on the ranking of the search results for \textbf{publication} records.
-This is because the publications are uniquely identifiable (unlike people - see \ref{sec:inferring-missing-identities} for more details) 
-and they have implicit textual content associated with them - the title, abstract and keywords.
-Note that the issues from \ref{search-ranking-issues} still apply for the publications - \cite{aseo} mention different approaches to \ac{ASEO}.
-By overusing certain keywords in the publication titles and abstracts, the authors can artificially increase the relevance of their publications to the search queries.
+\subsection{Sourcing the golden data}
 
-\subsection{Benchmarking the search results ranking}
-
-The common denominator for many of the ranking measures - like discounted cumulative gain or mean reciprocal rank - is the \textit{user interaction}.
+The common denominator for many of the ranking measures - like \ac{DCG} or \ac{MRR} - is the \textit{user interaction}.
 The user is presented with the search results and picks the most relevant one or scores the results based on the relevance to the query.
 
 Unfortunately, this is not applicable to our case - while we are tracking the user interactions in the Charles Explorer web appplication, the amount of collected data is far too low to be statistically significant.
-
-\begin{mybox}{}
-    The following section is described in greater detail in my blog posts series \textit{Benchmarking Charles Explorer search result rankings}\footnote{\url{https://jindrich.bar/edu/thesis-blog/}}.
-    
-    The blog posts contain the detailed description of the process of collecting the search queries for the benchmarking of the search results ranking in Charles Explorer.
-
-    Since the blog posts are rendered Jupyter notebooks, they also contain the code snippets used for the data collection and analysis.
-    The implementation of all the steps - i.e. data collection, data preprocessing, and the benchmarking itself - is fully reproducible and available in the embedded code snippets.
-\end{mybox}
 
 To establish a gold standard for the search results relevance, we do not have to rely solely on human interactions.
 
 Elsevier Scopus\footnote{https://www.elsevier.com/products/scopus} is a large academic database, which provides a search engine for the academic publications.
 Aside from the web application, it also provides a REST API for consuming the data programmatically.
 
-We use the Scopus API to retrieve ranked lists of publications for a given query, and then use the ranking of the publications as the source of the ``global relevance'' for the search query in the benchmark.
+We use the Scopus API to retrieve ranked lists of publications for different queries, and then use the ranking of the publications as the source of the ``global relevance'' for the search query in the benchmark.
 Simply put, by comparing the (ranking of the) search results in our search engine to the results of the Scopus search engine, we determine the relevance of the search results.
 
 We are expecting the search results of the Scopus search engine to be more precise and relevant than the ones of the Charles Explorer search engine -
 Scopus is a commercial product with a large team of developers and researchers, while Charles Explorer is a small academic project.
-The data available to scopus also contain details about the citations of the publications and author profiles, which can be used to further improve the search results ranking.
+The data available to Scopus also contain details about the citations of the publications and author profiles, which can be used to further improve the search results ranking.
 
-\subsection{Sampling the search query set}
+To partially mitigate the possible bias of the Scopus search engine, 
+we also evaluate the search results of the graph-enhanced reranking against 
+ranking based on the citation count. 
+
+We can consider the citation count as a proxy for the global relevance of the publication - the more citations a publication has, the more relevant it is to the academic community.
+
+\subsection[Sampling the search query set]{Sampling the search query set\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/ranking-benchmarks/}{[blog]}}}
 
 As the first step, we need to sample the \textit{search query set} for the benchmark. 
 Since we want to rule out possible biases - or at least mitigate their impact - we need a large and diverse enough set of queries to compare the search engines on.
@@ -309,7 +443,7 @@ While this could be mitigated using a more complex optimization algorithm (e.g. 
 Running the optimization algorithm with $n = 10000$ initial random samples of size $k = 300$ on the search query set, we arrive at a set of $174$ queries with the search result KL-divergence of \texttt{0.00317}. 
 This is a significant improvement over the original divergence of \texttt{0.0471} and we will consider this a fairer subset of the search queries for the benchmarking.
 
-\subsection{Collecting the data}
+\subsection[Collecting the data]{Collecting the data\textsuperscript{\href{https://barjin.github.io/edu/thesis-blog/collecting-data/}{[blog]}}}
 
 Since our proposed benchmark only evaluates the search results ranking, we collect the search results for the benchmark queries in advance.
 Similarly, we also collect the data from the Scopus API for the same queries, as the automated relevance feedback.
@@ -349,12 +483,14 @@ By calling the Scopus API, we get the search results in JSON format, which we th
 \end{figure}
 
 We see that the \texttt{ranking} column - the position of a publication in the search results - is only very weakly correlated with the other numeric attributes of the search results.
-This suggests that the default Scopus ranking is mostly influenced by the full-text search and does not take much reranking into account.
+This suggests that the default Scopus ranking is mostly influenced by the full-text search relevance and does not take any further attributes into account.
+The strongest correlated attribute is the \texttt{pubYear} - this suggest that the older publications are ranked higher in the search results.
+However, the absolute value of the correlation coeficient (\texttt{0.109848}) is still very low.
 
 It also suggest that the Scopus result ranking might not be too dependent on the social network measures and that we might not be able to improve the ranking 
-by using the social network data (as the ``explicit'' social network data like the citation count or the reference count are not correlated with the ranking).
+by using the social network data (as the ``explicit'' social network data like the citation count or the reference count are already not correlated with the ranking).
 
-\subsection{Simulating relevance feedback}
+\subsection[Simulating relevance feedback]{Simulating relevance feedback\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/ndcg-benchmark/}{[blog]}}}
 
 With the data collected, we now proceed with the actual analysis of the search results ranking in Charles Explorer.
 
@@ -393,7 +529,7 @@ After aggregation over all the queries, this gives us the following unfavourable
 \end{figure}
 
 We see that the current Charles Explorer search results differ quite a lot from the Scopus search results. 
-This can be caused by mutiple reasons - either the publications are not present in the Scopus database, or the queries are not specific enough - and the search results are returning partially disjoint sets of publications.
+This can be caused by mutiple reasons - either the publications are not present in the Scopus database, or the queries are not specific enough and the search results are returning partially disjoint sets of publications.
 
 Note that this is an issue that goes beyond re-ranking the Charles Explorer search results. 
 We cannot quantify the benefit of reordering the search results if we consider all the search results irrelevant.
@@ -402,10 +538,10 @@ This hinders our ability to use the Scopus search results ranking as the proxy f
 Since this thesis is focused on the search result ranking algorithms, we will proceed with the benchmarking as planned. 
 However, to improve the relevance score assignment, we add a \textit{similarity search} step. 
  
-In the $F_1$ score calculation, we are only matching the Charles Explorer search results with the Scopus search results by the publication title (case-insensitive). 
+In the $F_1$ score calculation, we are currently only matching the Charles Explorer search results with the Scopus search results by the \textit{publication title} (case-insensitive). 
 This matching criterion is prone to even the slightest variations in the publication titles, which can lead to false negatives.
 
-\subsubsection{Inferring the publication relevance with semantic search}\label{semantic-search}
+\subsubsection[Inferring the publication relevance with semantic search]{Inferring the publication relevance with semantic search\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/ndcg-benchmark/\#infering-the-relevance-with-similarity-search}{[blog]}}}\label{semantic-search}
 
 In the proposed \textit{similarity search} step, we use the similarity of LLM (Large Language Model) embeddings to match the publication titles. 
 This should help us to relate the publications missing from the Scopus search results to the ones present there and assign them a relevance score.
@@ -437,8 +573,6 @@ For the similarity search on the embeddings we use the ChromaDB database\footnot
 ChromaDB is a vector database designed for the similarity search on the embeddings, with support
 for enhancing the search results with the additional metadata attributes of the documents.
 
-\newpage
-
 \begin{figure}[ht!]
     \captionsetup{width=.9\linewidth}
     \includegraphics[width=0.8\textwidth]{../img/llm-embedding-positions-hist.png}
@@ -458,7 +592,7 @@ Secondly, the left-skewed distribution might be caused by non-uniform lengths of
 Since for some of the queries, Scopus returns only a few relevant search results (100 is only the maximum limit), 
 the resulting predicted rankings will be skewed towards the top of the list for these queries.
 
-\subsection{Calculating the base nDCG}
+\section{Evaluation}
 
 Using the original ranking positions and the predicted ranking positions as the source for the 
 relevance feedback, we calculate the \textit{nDCG} (Normalized Discounted Cumulative Gain) score for the 
@@ -500,7 +634,10 @@ our proposed method with $rel_q(d)$ introduces a \textit{non-linear} transformat
 This differentiates better between the search results that are ranked higher in the Scopus search results. 
 This is again in line with the beforementioned tendency of the human users to have clearer opinions about the top search results.
 
-nDCG calculation over the search results of Charles Explorer with the predicted relevance scores from \ref{semantic-search} gives us the following results:
+\subsection{Baseline benchmark}
+
+Calculating \texttt{nDCG} over search results for individual queries in
+Charles Explorer with the predicted relevance scores from \ref{semantic-search} gives us the following results:
 
 \begin{figure}[!ht]
     \captionsetup{width=.9\linewidth}
@@ -525,32 +662,24 @@ The mean nDCG score of $0.761607$ suggests that the search result ranking in Cha
 
 With the relevance feedback and baseline benchmark values established, we can now proceed with the re-ranking of the search results in Charles Explorer using the social network data.
 
-Due to the large size of the social network %%( todo number of nodes + edges)
-we prefer to use local graph statictics - or \textit{query relevant} statistics, as defined in \ref{graph-based-reranking}.
+For the \textit{1- and 2-hop betweenness centralities}, the benchmark returned the following results:
 
-\subsubsection{Ego betweenness centrality}\label{ego-betweenness}
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{|l|l|l|}
+    \hline
+        ~ & ndcg\_1\_centrality & ndcg\_2\_centrality \\ \hline
+        count & 149.000000 & 149.000000 \\ \hline
+        mean & 0.698402 & 0.705671 \\ \hline
+        std & 0.194843 & 0.190947 \\ \hline
+        min & 0.390366 & 0.390511 \\ \hline
+        25\% & 0.539009 & 0.545812 \\ \hline
+        50\% & 0.655002 & 0.671576 \\ \hline
+        75\% & 0.873008 & 0.884310 \\ \hline
+        max & 1.000000 & 1.000000 \\ \hline
+    \end{tabular}
+\end{table}
 
-The “betweenness centrality” is a graph node measure that quantifies the importance of a node in a graph. 
-It is calculated as the number of shortest paths between all pairs of nodes that pass through the node in question:
+We see that only relying on the betweenness centrality of the publications in the collaboration graph does not improve the search results ranking in Charles Explorer.
+Note that the relatively high mean nDCG score of $\sim0.70$ might be only because of the stability of the ordering algorithm used for the reranking, as for many nodes, both the betweenness centralities were $0$.
 
-\[g(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}}\]
-
-where $s$, $t$ and $v$ are nodes in the graph, $\sigma_{st}$ is the number of shortest paths between nodes $s$ and $t$, and $\sigma_{st}(v)$ is the number of shortest paths between $s$ and $t$ that pass through $v$.
-
-While this is usually calculated in the context of the entire graph, it is an useful measure for ego-networks too, as it can help us quantify the importance of a node in its local neighbourhood. 
-\cite{egonetworkbetweenness} have shown that for real-life networks, the ego betweenness centrality often correlates with the actual global betweenness of a node in the graph.
-
-In our data, the collaboration graph is bipartite - the nodes are either publications or people and there are no edges between the nodes of the same type.
-This means that the ego betweenness centrality of a publication is in fact proportional to the number of people that have collaborated on the publication.
-
-\subsubsection{2-hop betweenness centrality}
-Similar to the \ref{ego-betweenness}, we calculate the 2-hop betweenness centrality as the betweenness centrality of a node 
-in a subgraph induced by the node and its 2-hop neighbourhood.
-
-In our case of the bipartite collaboration graph, the 2-hop betweenness centrality of a publication is no longer proportional only to the number of people that have collaborated on the publication,
-but also to the number of other publications that the people have collaborated on.
-
-Note that this concept can be further extended to the $k$-hop betweenness centrality, but the computational complexity of the centrality calculation grows exponentially with the $k$.
-Materializing the induced subgraphs for the $k$-hop betweenness centrality calculation also poses a challenge in regard to the memory consumption. 
-
-In our experiements, we only use the $1-$ and $2-hop$ betweenness centrality as the query-relevant node statistics.

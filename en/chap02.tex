@@ -159,6 +159,8 @@ See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBL
 This could have been caused by human error on data input or by the limitations of the source systems. 
 Either way, this creates an unrecoverable loss of information in the dataset.
 
+\subsection{Algorithm}
+
 In the SQL database export, we can ``merge'' the records using the naïve approach efficiently using a many-to-one (non-injective) mapping
 on the \texttt{PERSON\_NAME} column.
 
@@ -181,21 +183,6 @@ the normalized version for all the variants is the same (i.e. $f(\texttt{PERSON\
 If we decide to add the output of this normalization function as an attribute in the \texttt{PUBLICATION\_AUTHOR\_ALL} view,
 we can proceed with the merging of the records using SQL GROUP BY and the aggregation functions.
 
-% \label{infobox:sqlite-loadable-extensions}
-\begin{mybox}
-    {SQLite Loadable Extensions}
-
-    While it would be possible to implement the normalization function using inbuilt scalar SQLite functions (namely \texttt{lower}, \texttt{trim},
-    and repeated use of \texttt{replace}), the developer experience of such solution is suboptimal, as it requires a lot of nested function calls
-    in the \texttt{SELECT} clause.
-
-    Because the way the scalar functions are defined in SQLite - and their implementation\footnote{\url{https://sqlite.org/src/file?name=src/func.c}}, 
-    the repeated calls to \texttt{replace} also result in repeated string allocations and deallocations - which can be a performance bottleneck.
-
-    Fortunately, SQLite allows the user to define their own loadable extensions\footnote{\url{https://www.sqlite.org/loadext.html}} in C.
-    This allows us to define the normalization function in C and load it as a scalar function in the SQLite database.
-\end{mybox}
-
 \subsection{Implementation}
 
 For the implemetation of the name normalization function, we use the SQLite loadable extensions mechanism.
@@ -213,6 +200,20 @@ The transformation itself is done in three steps:
 \end{enumerate}
 
 The full implementation of the normalization function is available in the GitHub repository of this thesis.\footnote{\url{https://github.com/barjin/master-thesis/tree/main/examples/sqlite-normalize-ext}}.
+
+\begin{mybox}
+    {SQLite Loadable Extensions}
+
+    While it would be possible to implement the normalization function using inbuilt scalar SQLite functions (namely \texttt{lower}, \texttt{trim},
+    and repeated use of \texttt{replace}), the developer experience of such solution is suboptimal, as it requires a lot of nested function calls
+    in the \texttt{SELECT} clause.
+
+    Because the way the scalar functions are defined in SQLite - and their implementation\footnote{\url{https://sqlite.org/src/file?name=src/func.c}}, 
+    the repeated calls to \texttt{replace} also result in repeated string allocations and deallocations - which can be a performance bottleneck.
+
+    Fortunately, SQLite allows the user to define their own loadable extensions\footnote{\url{https://www.sqlite.org/loadext.html}} in C.
+    This allows us to define the normalization function in C and load it as a scalar function in the SQLite database.
+\end{mybox}
 
 For reference purposes, we also implement the same normalization function using Python.
 This implementation loads the data from the database, normalizes the names using a Python function, and writes the normalized names into a new table.
@@ -250,38 +251,6 @@ Even with the reduced number of operations, the composed scalar functions seem t
 
 The Python reference implementation is expectedly much slower than both the SQLite extension and the composed scalar functions.
 This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - as compared to the native data access of the SQLite extension.
-
-\subsection{Issues with the naïve approach}
-
-While the name-based merging approach is simple and straightforward, it poses several issues.
-Firstly, name based merging can be cause over-merging in the case of the authors with common names.
-
-Secondly, in the proposed algorithm there is no support for the existing identifiers from the dataset.
-By only inferring the identifier from the name, we willingly discard the existing information about the person.
-
-The latter problem could be partially solved by coalescing the inferred identifiers with the existing ones.
-Using the SQL \texttt{COALESCE} function, we can create a new column in the \texttt{PUBLICATION\_AUTHOR\_ALL} view that would contain the inferred identifier only if the original one is missing.
-
-However, such approach would only fully work in the case of only internal - or only external authors.
-In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
-this would still result in the creation of up to two nodes for the same person (i.e. \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
-
-\begin{mybox}{``On-demand'' naïve identity inference}
-
-In an attempt to first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
-
-Instead of merging the records directly in the database, we merge the records on-demand in the application's visualization layer.
-If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
-we can reuse the naïve approach quite effectively.
-
-By restricting the domain of the mergeable records to a smaller, tighter subcomunity of the graph (i.e. collaborators of one internal author), 
-we reduce the number of the possible false positives in the merging.
-
-Obviously, this approach still carries the risk of the false positives in case of different external authors with the same name in the same subcommunity.
-
-Also note that this approach only improves the user experience with the application.
-Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
-\end{mybox}
 
 \subsection{Results evaluation}\label{sec:results-assessment}
 
@@ -332,6 +301,38 @@ The evaluation metrics of the naïve merging method are as follows:
 \end{figure}
 
 \footnotetext{The SQL implementation of both evaluation metrics is available in the \href{https://github.com/barjin/master-thesis/tree/main/examples/naive-merging-eval}{GitHub repository}.}
+
+\subsection{Issues with the naïve approach}
+
+While the name-based merging approach is simple and straightforward, it poses several issues.
+Firstly, name based merging can be cause over-merging in the case of the authors with common names.
+
+Secondly, in the proposed algorithm there is no support for the existing identifiers from the dataset.
+By only inferring the identifier from the name, we willingly discard the existing information about the person.
+
+The latter problem could be partially solved by coalescing the inferred identifiers with the existing ones.
+Using the SQL \texttt{COALESCE} function, we can create a new column in the \texttt{PUBLICATION\_AUTHOR\_ALL} view that would contain the inferred identifier only if the original one is missing.
+
+However, such approach would only fully work in the case of only internal - or only external authors.
+In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
+this would still result in the creation of up to two nodes for the same person (i.e. \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
+
+\begin{mybox}{``On-demand'' naïve identity inference}
+
+In an attempt to first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
+
+Instead of merging the records directly in the database, we merge the records on-demand in the application's visualization layer.
+If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
+we can reuse the naïve approach quite effectively.
+
+By restricting the domain of the mergeable records to a smaller, tighter subcomunity of the graph (i.e. collaborators of one internal author), 
+we reduce the number of the possible false positives in the merging.
+
+Obviously, this approach still carries the risk of the false positives in case of different external authors with the same name in the same subcommunity.
+
+Also note that this approach only improves the user experience with the application.
+Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
+\end{mybox}
 
 \section{Identity inference - Hierarchical clustering}
 
@@ -531,7 +532,7 @@ This is a significant improvement over the $k^2$ BFS runs in the original Memgra
     \captionsetup{width=.9\linewidth}
     \includegraphics[width=0.7\textwidth]{../img/identity_inferrence_distance_matrix.png}
     \centering
-    \caption{The performance comparison of different distance matrix calculation methods.}
+    \caption{The performance comparison of different distance matrix calculation methods ($n = 10$ runs for each method).}
     \label{fig:identity-inferrence-benchmarks}
 \end{figure}
 
@@ -555,7 +556,7 @@ This approach comes out as the most performant, with the mean time of $0.45\text
 \subsection{Clustering process}\label{sec:clustering-process}
 
 After calculating the distance matrix, we can proceed with the hierarchical clustering algorithm.
-For the purpose of this thesis, we will be using specifically the bottom-up agglomerative clustering algorithm.
+For the purpose of this thesis, we will be using specifically the \textit{bottom-up agglomerative clustering} algorithm.
 
 Unlike the naïve approach, the hierarchical clustering algorithm is parametrizable. Note that in the step $2(c)$ of the proposed algorithm, 
 we are mentioning a \textit{static preselected threshold condition} for the cluster boundaries.
@@ -567,7 +568,7 @@ We need to break down the hierarchy of recursively merging clusters into the dis
 Considering a maximum cophenetic value $c_{\text{max}}$, we can define a stopping criterion for the hierarchical clustering algorithm.
 
 If the two clusters we are about to merge are at the distance $c_{\text{max}}$ or further apart, we stop the merging process and 
-return the currently existing clusters as the final grouping.
+return the currently existing clusters as the final data point grouping.
 
 As mentioned earlier, the closest distance between two mergeable candidates in our graph is $4$. 
 This is because two person nodes we can consider to be mergeable have to be connected to two different publication nodes.
@@ -658,7 +659,7 @@ to determine the optimal cutoff distance.
 
 We notice that for the maximum cophenetic distance $c_{\text{max}} = 2$, the algorithm performance is very poor.
 This is because in such case, the algorithm cannot merge any two merge candidates - as the closest distance between them is $4$.
-In such case the algorithm only correctly classifies the first node in the cluster - the rest of the nodes are classified as separate entities.
+In such case the algorithm only correctly classifies the first node in the cluster - while the rest of the nodes are (incorrectly) classified as separate entities.
 
 We also see that the performance of the hierarchical clustering algorithm is dominated by the naïve approach, regardless the parameters.
 Unsurprisingly, the both methods perform more similar with the increasing cutoff cophenetic distance. 
