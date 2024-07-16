@@ -31,12 +31,13 @@ In the rest of this thesis, the term ``social network'' will be used to refer st
 \section*{Related work}
 \addcontentsline{toc}{section}{Related work}
 
-This section talks about the related work in the field of social network analysis and its applications in the context of academic research.
-It is separated into two parts - while the first subsection talks about the social network analysis in general, 
-the second part mentions different academic research result retrieval systems and their features.
+This section talks about the related work in the field of social network analysis, named entity recognition, graph visualization and academic search engines.
 
-\subsection*{Theoretical background}
-\addcontentsline{toc}{subsection}{Theoretical background}
+Note that more related work is mentioned in the respective chapters of this thesis,
+especially in cases where we compare our proposed methods with the existing solutions.
+
+\subsection*{Social network analysis and ranking}
+\addcontentsline{toc}{subsection}{Social network analysis and ranking}
 
 The social network analysis of research groups has been a topic of interest for various publications. 
 \cite{ORDOOBADI2019S164} and \cite{CIMENLER2014667} explore the social network of researchers and their publications, and they try to infer the 
@@ -59,13 +60,49 @@ discuss search engine optimization in the context of academic search engines.
 The reviewers of this paper mention the potentially harmful effect of \ac{ASEO} when the authors artificially increase 
 the relevance of their publications to the search queries by deliberately overusing certain keywords.
 
-\subsection*{Existing systems}
-\addcontentsline{toc}{subsection}{Existing systems}
+\subsection*{Named entity recognition}
+\addcontentsline{toc}{subsection}{Named entity recognition}
 
-As the main goal of this thesis is improving the user experience of the Charles Explorer application,
-we briefly explore the existing systems that are used for the academic research result retrieval and their features.
+The second chapter of this thesis is dedicated to the transformation of the relational data model into the graph data model
+and inferring the missing identity data from the social network.
 
-\textbf{Google Scholar} is a popular academic search engine maintained by Google LLC IPA.
+\textit{Identity inference} is a problem that has been extensively explored in the context of \textit{named entity recognition} in the natural language processing.
+\textit{Named entity recognition} is a subfield of the natural language processing that deals with the identification of named entities in the text.
+This can prove useful e.g. in the semantization of plain text, where the named entities are enhanced with links to the actual referenced entities in the knowledge base.
+
+\cite{ner-approaches} explore different approaches to the named entity recognition.
+Note that the common ground for all the mentioned approaches is extensive use of \ac{NLP} methods acquiring the context for each occurence of the named entity in the text.
+While we briefly explore similar approach (normalizing the entity names to the canonical form) in the second chapter of this thesis,
+the main focus is on the possibility of inferring the missing identity data from the \textit{social network}. 
+
+\subsection*{Graph visualization}
+\addcontentsline{toc}{subsection}{Graph visualization}
+
+The last chapter of this thesis explores the visualization of the academic social network.
+
+Many (e.g. \cite{aesthetics-graph} or \cite{cgv-graph}) studied the problem of graph visualization and the usability of the different graph layouts,
+with respect to the usability, aesthetics and the performance of the visualization.
+
+Our use case adds the additional layer of complexity, due to the requirement of deploying the visualization in the web application.
+While many have proposed own libraries for the graph visualization (e.g. \cite{wigis} or \cite{franz2016cytoscape}),
+a recent research by \cite{Greif_Burel_2024} suggests that the developer public is largely skewed towards the use of the \textit{D3.js}\footnote{\url{https://d3js.org/}}
+library for the any visualization (including graph).
+
+\cite{10.5555/2385879} lists a large number of different techniques and guidelines regarding 
+data presentation in a visual form, including the graph visualizations.
+We will refer to this book later on when discussing design decisions for the social network visualization.
+
+\subsection*{Academic search engines}
+\addcontentsline{toc}{subsection}{Academic search engines}
+
+Due to the goals of this thesis, we briefly explore the search engines used for academic results retrieval and their features.
+
+\textbf{\href{https://explorer.cuni.cz}{Charles Explorer}} is an academic open-source search engine developed for the Charles University in Prague.
+The system indexes the publications, classes, researchers and study programmes affiliated with the university and allows for exploring the entities and relations between them.
+
+As we mention \hyperref[sec:goals]{in the next section}, this thesis aims to improve the user experience and data quality of the Charles Explorer application by data mining the social network of researchers and their publications.
+
+\textbf{\href{https://scholar.google.com/}{Google Scholar}} is a popular academic search engine maintained by Google LLC IPA.
 According to the documentation\footnote{\url{https://scholar.google.com/intl/en/scholar/inclusion.html}}, the system crawls the Internet for well-formed academic publications and indexes them automatically. 
 \cite{google-scholar-size-estimation-2014} estimated the size of the Google Scholar index to be around $99.8$ million documents in 2014.
 Later estimates by \cite{google-scholar-size} put the size of the Google Scholar index at around $389$ million documents in 2019.
@@ -78,7 +115,7 @@ the Google Scholar index also does not feature search on metadata like author / 
 Many publications are also missing the links to the author profiles (authors are often only mentioned by their name), 
 which makes the exploration of the social network of researchers difficult.
 
-\textbf{Scopus} is a subscription-based academic search engine maintained by Elsevier.
+\textbf{\href{https://www.scopus.com/}{Scopus}} is a subscription-based academic search engine maintained by Elsevier.    
 \cite{google-scholar-size-estimation-2014} estimated the size of the Scopus index to be around $53.4$ million documents in 2014.
 
 According to the documentation\footnote{\url{https://www.elsevier.com/products/scopus/content/content-policy-and-selection}}, contributions to the Scopus index 
@@ -88,7 +125,7 @@ Despite this effort, \cite{predatory-scopus} and others claim that the Scopus in
 Because of the manual curation of the documents, the Scopus web application features a faceted search on various publication metadata
 and relations between the authors, their organizations and the publications themselves.
 
-\textbf{Web of Science} is a subscription-based academic search engine maintained by Clarivate Plc.
+\textbf{\href{https://www.webofscience.com/}{Web of Science}} is a subscription-based academic search engine maintained by Clarivate Plc.
 \cite{google-scholar-size-estimation-2014} estimated the size of the Scopus index to be around $56.9$ million documents in 2014.
 Similarly to Scopus, indexing of new publications is actively curated by a team of field experts.
 
@@ -99,7 +136,7 @@ points out that neither of the indexes might not fairly represent the global sci
 According to the claims, the indices are biased towards the publications from the English-speaking countries,
 written in English and concerning several specific fields of study.
 
-\section*{Goals of the thesis}
+\section*{Goals of the thesis}\label{sec:goals}
 \addcontentsline{toc}{section}{Goals of the thesis}
 
 The main goal of this thesis is to explore the practical applications of social network analysis 
