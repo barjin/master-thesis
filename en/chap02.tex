@@ -317,6 +317,7 @@ However, such approach would only fully work in the case of only internal - or o
 In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
 this would still result in the creation of up to two nodes for the same person (i.e. \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
 
+\label{sec:on-demand-identity-inference}
 \begin{mybox}{``On-demand'' naïve identity inference}
 
 In an attempt to first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
@@ -653,7 +654,7 @@ to determine the optimal cutoff distance.
     \includegraphics[width=0.8\textwidth]{../img/hierarchical-f1.png}
     \centering
     \caption{The F1 scores for the hierarchical clustering algorithm for different threshold values.\protect\footnotemark}
-\end{figure}
+\end{figure}\label{fig:hierarchical-f1}
 
 \footnotetext{Both methods have been reevaluated on a smaller representative subset of data ($n = 500$). For this reason, the naïve approach performance slighly differs from the previous evaluation.}
 

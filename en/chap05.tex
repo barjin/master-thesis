@@ -176,7 +176,7 @@ Later on, we try to experimentally evaluate the performance of different ranking
 
 In the following sections, we explore different social network metrics that can be used for auxiliary relevance score $s(p)$ calculation.
 
-\subsection{Social network metrics for reranking}
+\subsection{Social network metrics for reranking}\label{social-network-metrics}
 
 The academic social network graph is often large and sparse, as academic systems often accumulate many records over their lifetime.
 This poses a challenge for the social network metrics calculation - the computational complexity of any global graph metric grows 
@@ -291,7 +291,7 @@ the attenuation factor $\alpha$, the importance of the nodes that are further aw
 and the centrality measure can be approximated by truncating the sum at a certain small value of $k$.
 \end{mybox}
 
-\subsection{Combining the metrics}
+\subsection{Combining the metrics}\label{combining-metrics}
 
 In the third step of our proposed \hyperref[reranking-algorithm]{reranking algorithm},
 we want to combine the original relevance scores of the publications with the auxiliary 
@@ -307,13 +307,10 @@ In our experiments, we compare two different strategies for combining the scores
     $$
     \text{final\_score}(p) = \alpha \cdot \text{original\_score}(p) + (1 - \alpha) \cdot \text{auxiliary\_score}(p)
     $$
-    \item \textbf{Harmonic mean} - the final relevance score of a publication is the harmonic mean of the original relevance score and the auxiliary relevance score.
+    \item \textbf{Neural networks} - we train a neural network to predict the final relevance score of a publication based on the original relevance score and the auxiliary relevance score.
     
-    Note that harmonic mean of two numbers $a$ and $b$ is more sensitive to discrepancies between the two numbers than the arithmetic (weighted) mean.
-
-    $$
-    \text{final\_score}(p) = \frac{2}{\frac{1}{\text{original\_score}(p)} + \frac{1}{\text{auxiliary\_score}(p)}}
-    $$
+    Note that this approach is more complex and computationally expensive than the linear combination, but it might provide better results,
+    as it allows for the non-linear combination of the scores.
 \end{enumerate}
     
 \section{Benchmarking setup}
@@ -443,7 +440,7 @@ While this could be mitigated using a more complex optimization algorithm (e.g. 
 Running the optimization algorithm with $n = 10000$ initial random samples of size $k = 300$ on the search query set, we arrive at a set of $174$ queries with the search result KL-divergence of \texttt{0.00317}. 
 This is a significant improvement over the original divergence of \texttt{0.0471} and we will consider this a fairer subset of the search queries for the benchmarking.
 
-\subsection[Collecting the data]{Collecting the data\textsuperscript{\href{https://barjin.github.io/edu/thesis-blog/collecting-data/}{[blog]}}}
+\subsection[Collecting the data]{Collecting the data\textsuperscript{\href{https://barjin.github.io/edu/thesis-blog/collecting-data/}{[blog]}}}\label{collecting-data}
 
 Since our proposed benchmark only evaluates the search results ranking, we collect the search results for the benchmark queries in advance.
 Similarly, we also collect the data from the Scopus API for the same queries, as the automated relevance feedback.
@@ -634,7 +631,7 @@ our proposed method with $rel_q(d)$ introduces a \textit{non-linear} transformat
 This differentiates better between the search results that are ranked higher in the Scopus search results. 
 This is again in line with the beforementioned tendency of the human users to have clearer opinions about the top search results.
 
-\subsection{Baseline benchmark}
+\subsection{Baseline benchmark}\label{baseline-benchmark}
 
 Calculating \texttt{nDCG} over search results for individual queries in
 Charles Explorer with the predicted relevance scores from \ref{semantic-search} gives us the following results:
@@ -661,25 +658,162 @@ The mean nDCG score of $0.761607$ suggests that the search result ranking in Cha
 \subsection{Using graph metrics for re-ranking}
 
 With the relevance feedback and baseline benchmark values established, we can now proceed with the re-ranking of the search results in Charles Explorer using the social network data.
+After retrieving the metrics listed in \hyperref[social-network-metrics]{Subsection \ref*{social-network-metrics}},
+we train two models for aggregating the social network metrics and the original relevance scores to predict the final relevance scores.
 
-For the \textit{1- and 2-hop betweenness centralities}, the benchmark returned the following results:
+As mentioned in \hyperref[combining-metrics]{Subsection \ref*{combining-metrics}}, we use two different approaches for the aggregation.
 
-\begin{table}[!ht]
+\textbf{Linear combination}: The first proposed solution suggests a linear combination of the original relevance scores and the auxiliary relevance scores.
+To find the best coefficients of the linear combination, we use a simple least squares regression model.
+
+By training a regularized linear regression model on the training data ($n=9600$) (i.e. original relevance-based ranking and the social network metrics), we find the coefficients that minimize the \ac{MSE} of the predicted relevance scores.
+
+Evaluation of this model on the test data ($n = 2265$) gives us a \ac{MSE} of $2.1016$.
+While this is not interpretable as is - since we are learning an arbitrary relevance score, not a ranking - we can use the predicted relevance scores to rerank the search results and calculate the nDCG score.
+
+Furthermore, the simplicity of the linear regression model allows us to inspect the internal coefficients learned by the model and
+to interpret the importance of the individual features for the final relevance score.
+
+\begin{figure}[!ht]
+    \captionsetup{width=.9\linewidth}
     \centering
-    \begin{tabular}{|l|l|l|}
+    \begin{tabular}{|l|l|}
     \hline
-        ~ & ndcg\_1\_centrality & ndcg\_2\_centrality \\ \hline
-        count & 149.000000 & 149.000000 \\ \hline
-        mean & 0.698402 & 0.705671 \\ \hline
-        std & 0.194843 & 0.190947 \\ \hline
-        min & 0.390366 & 0.390511 \\ \hline
-        25\% & 0.539009 & 0.545812 \\ \hline
-        50\% & 0.655002 & 0.671576 \\ \hline
-        75\% & 0.873008 & 0.884310 \\ \hline
-        max & 1.000000 & 1.000000 \\ \hline
+        \textbf{Feature} & \textbf{Coefficient} \\ \hline
+        charles\_explorer\_ranking & -0.23068 \\ \hline
+        centrality\_1 & 0.08317 \\ \hline
+        centrality\_2 & 0.01018 \\ \hline
+        degree & -0.08756 \\ \hline
+        katz\_centrality & -0.00491 \\ \hline
+        node\_cut & -0.02733 \\ \hline
     \end{tabular}
-\end{table}
+    \caption{Coefficients of the linear regression model for the linear combination of the original relevance scores and the social network metrics.}
+\end{figure}
 
-We see that only relying on the betweenness centrality of the publications in the collaboration graph does not improve the search results ranking in Charles Explorer.
-Note that the relatively high mean nDCG score of $\sim0.70$ might be only because of the stability of the ordering algorithm used for the reranking, as for many nodes, both the betweenness centralities were $0$.
+From the coefficients, we can see that the most important feature for the final relevance score is the original relevance score - i.e. the ranking of the search results in Charles Explorer.
+This seemingly confirms our hypothesis that the Scopus search result ranking is mainly influenced by the relevance of the search results themselves, rather than any other - more global - publication measures.
 
+\textbf{Neural networks}: The second proposed solution suggests training a neural network to predict the final relevance scores based on the original relevance scores and the social network metrics.
+As mentioned before, this might help with finding the non-linear relationships between the features and the final relevance scores.
+On the other side, such model is less interpretable than the linear regression model.
+
+Training an neural network ($2$ hidden layers, $100$ neurons each) on the same training dataset ($n=9600$) as the linear regression model gives us a \ac{MSE} of $2.0498$ on the test data ($n=2265$).
+We see that in this regard, the neural network model outperforms the linear regression model only marginally.
+This further suggests that the relationships between the features and the final relevance scores are rather simple and can be captured by a linear model.
+
+Using both models to aggregate the new ``predicted'' relevance scores, we calculate the nDCG score for the re-ranked search results.
+We compare the NDCG scores of the re-ranked search results to the baseline benchmark to determine the performance of the social network-enhanced search engine.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+    \hline
+        ~ & \textbf{Baseline nDCG} & \textbf{Linear model} & \textbf{Neural network} \\ \hline
+        count & 149.000000 & 149.000000 & 149.000000 \\ \hline
+        mean & 0.761607 & 0.746176 & 0.770519 \\ \hline
+        std & 0.180979 & 0.172590 & 0.178775 \\ \hline
+        min & 0.405669 & 0.404108 & 0.425830 \\ \hline
+        25\% & 0.627563 & 0.618646 & 0.615640 \\ \hline
+        50\% & 0.736246 & 0.735163 & 0.759933 \\ \hline
+        75\% & 0.934206 & 0.904977 & 0.955842 \\ \hline
+        max & 1.000000 & 1.000000 & 1.000000 \\ \hline
+    \end{tabular}
+    \captionsetup{width=.9\linewidth}
+    \caption{Comparison of the nDCG scores of the baseline search results and the search results re-ranked using the linear regression and neural network models.}
+\end{figure}
+
+We see that the nDCG score for both the models utilizing the graph measures is lower - or comparable - 
+to the nDCG score of the original search results.
+
+This shows that the graph measures we have collected do not provide much useful information 
+for the reranking of the search results. 
+
+Note that while the evaluation of the reranking performance is done on the entire set 
+(including the linear regression / neural network training set), 
+the results are still not any better than the original search results. 
+This hints at the high dimensionality of the problem and the lack of generalization of either of the models.
+
+As mentioned before, the Scopus search result ranking is likely mainly influenced by the relevance of 
+the search results themselves, rather than any other - more global - publication measures. 
+In a way, the fact that the graph measures do not help with the reranking does not come as a surprise. 
+This might be also partially caused by the title similarity search step, which helps with the missing publications problem.
+
+This shows that the Scopus search result ranking is likely not a good proxy for the relevance feedback,
+if searching for a global relevance measure of the publications.
+
+\section[Predicting the citation count]{Predicting the citation count\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/citation-count/}{[blog]}}}
+
+As we have noticed before, the search results ranking we have acquired from Scopus is mostly based on the raw query relevance. 
+Because of this, it might be also riddled with the problems we have discussed in \hyperref[search-ranking-issues]{Subsection \ref*{search-ranking-issues}} - 
+such as the susceptibility to (potentially malicious) search engine optimization.
+
+In search for a better ranking system for Charles Explorer, we try to predict the \textit{citation count} of the papers based on the local graph measures we have calculated in the previous section. 
+This decision comes from the idea that the \textit{citation count} is a good indicator of the importance of the paper that cannot be easily interfered with by the authors.
+
+Unlike the search result ranking optimization from the previous sections, the citation count inference is a popular research topic in the field of bibliometrics.
+Notably, \cite{ABBASI2011594} explores the influence of small scale graph neighborhoods of authors on their academic performance and the citation count of their papers.
+
+\subsection{Sourcing the data}
+
+Unfortunately, in the data collected for the previous sections' benchmarking we do not have the citation count of the publications.
+Reusing the Scopus API access from \hyperref[collecting-data]{Subsection \ref*{collecting-data}}, we can retrieve the citation count for the publications in our system.
+
+This shrinks the dataset to $n = 962$ publications, as the Scopus API does not contain all the publications in our system.
+While this is a significant reduction in the dataset size, we still consider this representative and large enough for the purposes of this thesis.
+
+\subsection{Training the models}
+
+As in the previous section, we train two models for predicting the citation count of the publications based on the local graph measures.
+
+\textbf{Linear regression}: The first model is a simple linear regression model, which tries to predict the citation count of the publications based on the local graph measures.
+The model is trained on the training dataset ($n=768$) and evaluated on the test dataset ($n=194$). 
+On the test dataset, the model achieves a \ac{MSE} of $6725.05077$.
+
+As in the previous experiment, the model allows us to inspect the coefficients of the individual features and interpret their importance for the prediction of the citation count.
+
+\begin{figure}[!ht]
+    \captionsetup{width=.9\linewidth}
+    \centering
+    \begin{tabular}{|l|l|}
+    \hline
+        \textbf{Feature} & \textbf{Coefficient} \\ \hline
+        centrality\_1 & 13.60649 \\ \hline
+        centrality\_2 & -12.04390 \\ \hline
+        degree & 35.42298 \\ \hline
+        katz\_centrality & -5.46456 \\ \hline
+        node\_cut & 3.06015 \\ \hline
+    \end{tabular}
+    \caption{Coefficients of the linear regression model for predicting the publication citation count.}
+\end{figure}
+
+Note that from the linear regression coefficients, it seems that the \texttt{degree} of the publication is the most important feature for the prediction of the citation count (all the features are normalized to the same scale before training the regression).
+This is in line with the findings of \cite{ABBASI2011594}, which - while inspecting slightly different graph measures - also found the \texttt{degree} of the publications to be the most important feature for the prediction of the citation count.
+
+\textbf{Neural network}: The second model is a neural network model, which tries to predict the citation count of the publications based on the local graph measures.
+Training an neural network ($2$ hidden layers, $100$ neurons each) on the training dataset ($n=768$) gives us a \ac{MSE} of $7425.57273$ on the test data ($n=194$).
+
+Note that in terms of the \ac{MSE}, neither of the models is performing especially well - in the absolute numbers of \ac{RMSE}, the models are off by approximately $80$ citations on average.
+This is a significant error, considering that the average citation count in the dataset is $30$.
+
+\subsection[Citation-based ranking]{Citation-based ranking\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/citation-count/\#citation-based-ranking}{[blog]}}}\label{citation-based-ranking}
+
+Note that despite the unfavourable results of the previous experiments - i.e. predicting the absolute value of the citation count - we might still be able to use the citation count as a proxy for the global relevance of the publications.
+
+This is beause the ranking benchmarks (and human users of search engines) are usually not be interested in the exact citation count, but rather in the relative importance of the publications. 
+Both benchmarks and users also tend to discount the publications further down in the search result list.
+
+Because of our original goal, i.e. reorder the search results to set the more “globally” important papers higher,
+we might try to use the predicted citation count as the relevance score for the search results ranking.
+
+In the last experiment, we calculate the nDCG score of the search results in Charles Explorer with the true citation count as the relevance feedback and the predicted citation count based on the graph metrics as the ordering.
+
+\begin{figure}[ht!]
+    \captionsetup{width=.9\linewidth}
+    \includegraphics[width=0.8\textwidth]{../img/ndcg_citations.png}
+    \centering
+    \caption{nDCG scores of $100$ queries with different citation count prediction methods.}
+\end{figure}
+
+We see that both the methods utilizing the graph measures for the citation count prediction are performing much better than the baseline benchmark.
+This confirms our hypothesis from the beginning of this subsection - while the graph measures might not provide enough data for the absolute prediction of the citation count, 
+they can still be well utilized for the relative ranking of the publications.

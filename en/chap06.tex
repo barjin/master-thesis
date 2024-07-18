@@ -13,15 +13,9 @@ For consistency, we will still consider the ``current state'' of the visualizati
 
 The implementation of the visualization components is available in the GitLab repository\footnote{At \url{https://gitlab.mff.cuni.cz/barj/charles-explorer/}}.
 
-\section{Vocabulary}
-
-This section introduces some basic vocabulary that we will use throughout this chapter.
-
-\textbf{Visual decoding}: Also called \textit{preattentive processing} or \textit{preattentive vision}, visual decoding is the instantaneous perception of the visual field that comes without apparent mental effort. (\cite{Cleveland1985})
-
-\textbf{Bipartite network projection}: A bipartite network is a graph whose nodes can be divided into two disjoint sets, $U$ and $V$, such that every edge connects a node in $U$ to a node in $V$.
-A (monopartite) projection of a bipartite network is a graph that represents the connections between the nodes in one of the sets, $U$ or $V$.
-The nodes of the set are connected in the projection if they share a common neighbor in the bipartite network.
+\begin{mybox}{Visual decoding}
+    Also called \textit{preattentive processing} or \textit{preattentive vision}, visual decoding is the instantaneous perception of the visual field that comes without apparent mental effort. (\cite{Cleveland1985})
+\end{mybox}
 
 \section{Assessing the current state} \label{sec:current-state}
 
@@ -74,7 +68,7 @@ In case the user is looking for a specific person in the graph, they have to sca
 
 \subsection{Contracting publication nodes into edges}
 
-The current data visualization uses authors as the nodes and contracts publications as the edges.
+The current data visualization effectively presents a monopartite projection of the social network - uses authors as the nodes and contracts publications as the edges.
 The number of common publications is aggregated to the edge thickness. \cite{10.5555/2385879} considers thickness a visual channel with a limited quantitative resolution.
 
 Setting the edge width in proportion to the number of common publications might also cause confusion, as the \textit{area} of the edge depends both on the width and the length of the edge.
@@ -89,7 +83,7 @@ A publication with $n$ authors contributes to $\frac{n(n-1)}{2}$ edges between i
     \captionsetup{width=.9\linewidth}
     \includegraphics[width=0.7\textwidth]{../img/contraction.png}
     \centering
-    \caption{Contracting publication nodes into edges only shows coauthorship between pairs of authors. Larger communities of coauthors (\# coauthors > 2) are not displayed correctly in the graph.}
+    \caption{The monopartite projection correctly shows only coauthorship between pairs of authors. Larger communities of coauthors (\# coauthors > 2) are not displayed correctly in the graph.}
 \end{figure}
 
 This means that publications with one author are not represented in the graph at all, as there are no edges to draw between the nodes.
@@ -98,7 +92,7 @@ For publications with more than two authors, one publication is represented by m
 This clutters the graph with edges and makes the publication - edge mapping less readable. 
 For correct representation of those publications, we would need to draw hyperedges between the nodes, which might cause the readability of the graph to decrease even further.
 
-\section{Addressing the issues}
+\section{Addressing the issues}\label{sec:addressing-issues}
 
 To address the problems from the section \ref{sec:current-state} and improve the visualization of the ego networks, we propose changes to the current visualization.
 We also implement an experimental prototype visualization of the proposed changes.
