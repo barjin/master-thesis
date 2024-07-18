@@ -1,6 +1,6 @@
 \chapter{Definitions and notation}
 
-The initial chapter lays out the definitions of the most important social network related terms and concepts. 
+The initial chapter lays out the definitions of the most essential social network-related terms and concepts. 
 The chapter also introduces the notation used throughout the thesis.
 
 \section{Discrete graphs}
@@ -8,7 +8,7 @@ The chapter also introduces the notation used throughout the thesis.
 In discrete mathematics, \textit{graph} is a mathematical structure that consists of a set of \textit{nodes} (often denoted as $V$ for \textit{vertices})
 and a set of \textit{edges} (often denoted as $E$) that connect pairs of the nodes.
 
-This section introduces some of the less common graph-related terms and concepts that are used in the thesis.
+This section introduces some of the thesis's less common graph-related terms and concepts.
 
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}[section]
@@ -16,13 +16,13 @@ This section introduces some of the less common graph-related terms and concepts
 \begin{definition}[Adjacency matrix]
     The \textit{adjacency matrix} of a graph $G = (V, E)$ is a square matrix $A$ of size $|V| \times |V|$ where $A_{uv} = 1$ if there is an edge between nodes $u$ and $v$, and $A_{uv} = 0$ otherwise.  
 
-    Different matrix operations can be used to calculate various properties of the graph - e.g. the degree of a node can be calculated as the sum of the elements in the row of the adjacency matrix corresponding to the node.
+    Different matrix operations can be used to calculate various properties of the graph. For example, the degree of a node can be calculated as the sum of the elements in the row of the adjacency matrix corresponding to the node.
 \end{definition}
 
 \begin{definition}[Distance matrix]
     The \textit{distance matrix} of a graph $G = (V, E)$ is a square matrix $D$ of size $|V| \times |V|$ where $D_{uv}$ is the length of the shortest path between nodes $u$ and $v$.
 
-    The distance matrix can be calculated using algorithms such as Floyd-Warshall algorithm or repeated Dijkstra's algorithm.
+    The distance matrix can be calculated using Floyd-Warshall algorithm or repeated Dijkstra's algorithm.
 \end{definition}
 
 \begin{definition}[Node neighborhood]
@@ -40,7 +40,7 @@ This section introduces some of the less common graph-related terms and concepts
     $$
 
     This can be useful to capture the local structure of a graph 
-    - e.g. \cite{nikolentzos2019khop} use the concept of k-hop neighborhoods to enhance graph embeddings in \ac{GNN}.
+    - e.g., \cite{nikolentzos2019khop} use the concept of k-hop neighborhoods to enhance graph embeddings in \ac{GNN}.
 \end{definition}
 
 \begin{definition}[Subgraph]
@@ -62,7 +62,7 @@ This section introduces some of the less common graph-related terms and concepts
 
 \begin{definition}[Monopartite projection]\label{def:monopartite-projection}
     The \textit{monopartite projection} of a bipartite graph $G = (V_1 \cup V_2, E)$ onto a set of nodes $V_1$ is a graph $G' = (V_1, E')$, 
-    where the nodes are the nodes in $V_1$ and the edges are between the nodes in $V_1$ that share a common neighbor in $V_2$.
+    where the nodes are the nodes in $V_1$, and the edges are between the nodes in $V_1$ that share a common neighbor in $V_2$.
     
     Formally defined, the monopartite projection is a graph $G' = (V_1, E')$ where
     $$
@@ -70,7 +70,7 @@ This section introduces some of the less common graph-related terms and concepts
     $$
 
     Projection algorithms can produce multiple edges between the nodes in the projection.
-    Resolution of this problem largely depends on the specific use case of the projection - e.g. $G'$ can be a multigraph or the edges can be weighted by the number of common neighbors from $V_2$.
+    The resolution of this problem largely depends on the specific use case of the projection — e.g., $G'$ can be a multigraph, or the edges can be weighted by the number of common neighbors from $V_2$.
     
 \begin{definition}[Connected component]
     A \textit{connected component} of a graph $G = (V, E)$ is a subgraph $G' = (V', E')$ where all nodes in $V'$ are reachable from each other by traversing the edges in $E'$.
@@ -79,10 +79,10 @@ This section introduces some of the less common graph-related terms and concepts
 \end{definition}
 \section{Social networks}
 
-While the social sciences have been studying social networks for decades, not all of the terminology is relevant for the purposes of this thesis.
-This section introduces the most important computation-related social network terms and concepts that are used in the thesis.
+While the social sciences have been studying social networks for decades, not all of the terminology is relevant to this thesis.
+This section introduces the most essential computation-related social network terms and concepts used in the thesis.
 
-For the purposes of this thesis, a \textit{social network} is a graph where the nodes represent real-world entities (people, their publications) and the edges represent relationships between the entities (only authorship in this thesis).
+For this thesis, a \textit{social network} is a graph where the nodes represent real-world entities (people, their publications) and the edges represent relationships between the entities (only authorship in this thesis).
 
 \begin{definition}[Ego network]
     The \textit{ego network} of a node $v$ in a social network $G$ is the induced subgraph of $G$ that contains $v$ and its (1-hop) neighborhood.
@@ -104,7 +104,7 @@ For the purposes of this thesis, a \textit{social network} is a graph where the 
 In the context of this thesis, the social network metrics are used to evaluate 
 the performance of the classifiers that are run on the social network data.
 
-This section introduces the most common classifier evaluation metrics that are used in the thesis.
+This section introduces the most common classifier evaluation metrics used in the thesis.
 
 \begin{definition}[Precision]
     The \textit{precision} of a classifier is the ratio of the true positive predictions to the total number of positive predictions.

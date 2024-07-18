@@ -9,12 +9,12 @@ document-based search engine and experiment with the social network data for the
 
 \section{Full-text search}
 
-Full-text search is nowadays an essential part of any information retrieval system. 
+Nowadays, full-text search is an essential part of any information retrieval system. 
 Many search engines - including Apache Solr in Charles Explorer - implement the full text search by utilizing the TF-IDF algorithm or similar.
 This is a simple and efficient way to rank the search results based on the relevance of the documents to the search query.
 
-The TF-IDF algorithm is based on the term frequency and inverse document frequency of the terms in the documents - a \textit{document} is in general unstructured free text content.
-Some entities in our academic search engine map well to this notion of a \textit{document} - e.g. a \texttt{publication} or \texttt{class} both have inherent textual content (titles, abstracts or class syllabi).
+The TF-IDF algorithm is based on the term frequency and inverse document frequency of the terms in the documents - a \textit{document} is, in general, unstructured free text content.
+Some entities in our academic search engine map well to this notion of a \textit{document} - e.g., a \texttt{publication} or \texttt{class} both have inherent textual content (titles, abstracts, or class syllabi).
 Unfortunately, this does not hold for all the entities in the system.
 
 As an example, a \texttt{person} entity usually does not have any explicit textual content associated with it. 
@@ -37,15 +37,15 @@ However, this might be less of a problem than the first issue, as it's not too c
 Result ranking in information retrieval refers to the ordering of the search results when presented to the end user. This is often based on the relevance of the documents to the current search query.
 The relevance-based ranking is often enough for the basic use case - the user is presented with the most relevant documents first, and can further explore the less relevant ones if needed.
 
-While it might seem a bit superficial, the ranking is in fact still part of the information retrieval process. 
+While it might seem a bit superficial, the ranking is, in fact, still part of the information retrieval process. 
 \cite{ranking-user-choice} showed that
 the ranking of the search results positively correlates with the click-through rate of the results 
 - likely because of the typical top-left to bottom-right reading pattern of the users.
-This can be further affected by other, more technical factors - such as the need for an additional user action like scroll or pagination to see the results further down the list.
+This can be further affected by other, more technical factors - such as the need for an additional user action like scrolling or pagination to see the results further down the list.
 
 %% https://link.springer.com/article/10.1007/s10791-010-9150-8 - Re-ranking search results using an additional retrieved list
 
-Considering a simple tf-idf based search engine, the ranking of the search results is based on the relevance of the documents to the search query.
+Considering a simple tf-idf-based search engine, the ranking of the search results is based on the relevance of the documents to the search query.
 This is directly related to the term frequency of the query in the document - for a fixed query and document collection, we can forget about the inverse document frequency, as it's constant over all the documents.
 Ranking the documents solely based on the term frequency might however lead to unfavourable results - especially in the case of a proxy-representation of a given entity.
 
@@ -57,9 +57,9 @@ Ranking the documents solely based on the term frequency might however lead to u
     \caption{Simple representation of the social network of Alice and Bob.}
 \end{figure}
 
-Let us explore the issues on an example where we represent people as documents, concatenating the textual content of the entities associated with them.
+Let us explore the issues in an example where we represent people as documents, concatenating the textual content of the entities associated with them.
 Consider two academic researchers in our system - \textit{prof. Alice} and \textit{Bc. Bob}. 
-Bob is a student of Alice, and has published several papers on \textit{Information retrieval} with her. Aside from those, Bob has not published any other papers.
+Bob is a student of Alice and has published several papers on \textit{Information retrieval} with her. Aside from those, Bob has not published any other papers.
 On the other hand, Alice has published a lot of papers on various topics - related to IR, but also to other similar fields. 
 See a simple representation of their social network above.
 
@@ -97,7 +97,7 @@ divided by the total number of terms in the document $d$ (the document's length)
 \end{align}
 \end{subequations}
 
-Since we have assumed that Alice's document is a superset of Bob's document, the result inequality holds - and therefore the tf-idf score of Bob's document is higher than the one of Alice's document.
+Since we have assumed that Alice's document is a superset of Bob's document, the result inequality holds - and therefore, the tf-idf score of Bob's document is higher than the one of Alice's document.
 
 Note that the assumption in the equation \ref{eq:51assumption} is only true for the cases when Alice does not publish any other papers on the topic of the query with other co-authors.
 
@@ -105,19 +105,19 @@ Note that the assumption in the equation \ref{eq:51assumption} is only true for 
 % Assuming the search query is \textit{Information Retrieval} - and there are no other publications or classes related to this topic in the system - 
 % the search engine will consider Bob as the more relevant person for this topic. This is becuase the term frequency of the query in Bob's document is higher than in Alice's document - solely because of the length.
 
-In either way, this approach most likely will not provide the desired outcome - while Bob has published papers only on the given topic - and therefore has higher tf-idf relevance to the query,
-it is likely that Alice is the more relevant person for the searching user, since she is more experienced in the topic.
+Either way, this approach most likely will not provide the desired outcome - while Bob has published papers only on the given topic - and therefore has higher tf-idf relevance to the query,
+Alice is likely the more relevant person for the searching user since she is more experienced in the topic.
 
 \section{Re-ranking}
 
 Knowing the theoretical issues of the current Charles Explorer search engine implementation, we try to address them by proposing a system for re-ranking the search results.
-In the following sections, we go over different existing re-ranking strategies utilized in other systems and explore the possibilities of using the social network data 
+In the following sections, we go over different existing re-ranking strategies utilized in other systems and explore the possibilities of using social network data 
 for the re-ranking in Charles Explorer.
 
-Even though we have only talked about person entities in the previous sections, we will conduct the all the experiments
+Even though we have only talked about person entities in the previous sections, we will conduct all the experiments
 on the ranking of the search results for \textbf{publication} records.
 This is because the publications are uniquely identifiable (unlike people - see \ref{sec:inferring-missing-identities} for more details) 
-and they have implicit textual content associated with them - the title, abstract and keywords.
+and they have implicit textual content associated with them - the title, abstract, and keywords.
 
 Note that the issues from \ref{search-ranking-issues} still apply for the publications - \cite{aseo} mention different approaches to \ac{ASEO}.
 By overusing certain keywords in the publication titles and abstracts, the authors can artificially increase the relevance of their publications to the search queries.
@@ -130,7 +130,7 @@ Unfortunately, only a small portion of the engines actually discloses the detail
 
 To have a look at the existing re-ranking strategies, we examine the related academic literature on the topic.
 
-\cite{wikipedia-rerank} propose a reranking algorithm for the Wikipedia search engine, ranking the search results based on a current wikipedia page and its linkage (paths in the web graph) to the search results.
+\cite{wikipedia-rerank} propose a reranking algorithm for the Wikipedia search engine, ranking the search results based on a current Wikipedia page and its linkage (paths in the web graph) to the search results.
 \cite{passage-graph} propose a reranking algorithm for document search using metrics on a \textit{passage graph} - a graph representation of the documents and the passages within them
 with the edges representing the similarity between the passages.
 
@@ -144,12 +144,12 @@ See that unlike in the search engines, the reranking in the recommendation syste
 
 \subsection{Algorithm}\label{reranking-algorithm}
 
-In the previous subsection, we have listed several exisiting reranking strategies.
+In the previous subsection, we have listed several existing reranking strategies.
 The common base for all these systems is the \textbf{two-stage search pipeline}. 
 In the first stage, a traditional search engine (e.g. TF-IDF based) is used to retrieve the initial set of results. 
 Then, these results are re-ranked using a different algorithm. 
 
-While this might seem redundant, this approach allows the second algorithm to focus only the more relevant results, 
+While this might seem redundant, this approach allows the second algorithm to focus only on the more relevant results, 
 and be perhaps more computationally expensive.
 Unfortunately, this also means that the reranking algorithm is not able to affect the initial search results; 
 it can only change the order of the results. It also brings in the issue of pagination - if the user has to go 
@@ -167,8 +167,7 @@ we propose the following reranking algorithm:}
     \item Construct a new list $\text{Rank}_q$ with items from $R_q$ and ranking based both on the original relevance scores and the auxiliary relevance scores.
 \end{enumerate}
 
-We notice that this algorithm definition is quite abstract - and aside from the mention of the social network data, 
-it does not differ from the general two-stage reranking algorithm definition.
+We notice that this algorithm definition is quite abstract - and aside from the mention of the social network data, it does not differ from the definition of the general two-stage reranking algorithm.
 
 However, the third step of the algorithm is not trivial either. The balance of the original relevance scores and the auxiliary relevance scores
 in the final ranking is a task of \textit{multiobjective optimization} and might be hard to solve in a general case.
@@ -183,7 +182,7 @@ This poses a challenge for the social network metrics calculation - the computat
 with the number of nodes in the graph.
 
 This combined with the need for the real-time response of the search engine makes the calculation of the global graph metrics infeasible.
-In the following sections, we propose some of the measures defined on close neighbourhoods of the nodes in the graph,
+In the following sections, we propose some of the measures defined on close neighborhoods of the nodes in the graph,
 the performance of which we will later evaluate in the experiments.
 
 \subsubsection{Node degree}
@@ -193,8 +192,8 @@ $$
 \text{deg}(v) = |N(v)|
 $$
 
-In the case of the publications nodes, the node degree is the number of people that have collaborated on the publication.
-The possible benefit of using this metric is rather clear - we expect that might be a correlation between the number of collaborators on a publication and the 
+In the case of the publication nodes, the node degree is the number of people that have collaborated on the publication.
+The possible benefit of using this metric is rather clear - we expect that there might be a correlation between the number of collaborators on a publication and the 
 global relevance of a publication.
 
 \subsubsection{Neighborhood-separating node cut size}
@@ -224,20 +223,20 @@ where $\sigma_{st}$ is the number of shortest paths between nodes $s$ and $t$, a
 While this is usually calculated in the context of the entire graph, it is an useful measure for ego-networks too, as it can help us quantify the importance of a node in its local neighbourhood. 
 \cite{egonetworkbetweenness} have shown that for real-life networks, the ego betweenness centrality often correlates with the actual global betweenness of a node in the graph.
 
-In our data, the collaboration graph is bipartite - the nodes are either publications or people and there are no edges between the nodes of the same type.
+In our data, the collaboration graph is bipartite - the nodes are either publications or people, and there are no edges between the nodes of the same type.
 This means that the ego betweenness centrality of a publication is in fact proportional to the number of people that have collaborated on the publication.
 
 \subsubsection{2-hop betweenness centrality}
 Similar to the \hyperref[ego-betweenness]{ego betweenness centrality}, we calculate the \textit{2-hop betweenness centrality} as the betweenness centrality of a node 
-in a subgraph induced by the node and its 2-hop neighbourhood.
+in a subgraph induced by the node and its 2-hop neighborhood.
 
 In our case of the bipartite collaboration graph, the \textit{2-hop betweenness centrality} of a publication is no longer proportional only to the number of people that have collaborated on the publication,
 but also to the \textit{number of other publications that the people have collaborated on}.
 
 Note that this concept can be further extended to the $k$-hop betweenness centrality, but the computational complexity of the centrality calculation grows exponentially with the $k$.
-Materializing the induced subgraphs for the $k$-hop betweenness centrality calculation also poses a challenge in regard to the memory consumption. 
+Materializing the induced subgraphs for the $k$-hop betweenness centrality calculation also poses a challenge in regard to memory consumption. 
 
-In our experiements, we only use the $1-$ and $2-hop$ neighborhoods for the betweenness centrality calculation, due to the fast growth of the computational complexity with larger $k$.
+In our experiments, we only use the $1-$ and $2-hop$ neighborhoods for the betweenness centrality calculation due to the fast growth of the computational complexity with larger $k$.
 
 \subsubsection{Eigenvector centrality}
 The \textit{eigenvector centrality} of a node $v_i$ in a graph $G$ is the sum of the centrality scores of the nodes that are connected to $v$.
@@ -326,10 +325,10 @@ Unfortunately, this is not applicable to our case - while we are tracking the us
 
 To establish a gold standard for the search results relevance, we do not have to rely solely on human interactions.
 
-Elsevier Scopus\footnote{https://www.elsevier.com/products/scopus} is a large academic database, which provides a search engine for the academic publications.
+Elsevier Scopus\footnote{https://www.elsevier.com/products/scopus} is a large academic database that provides a search engine for academic publications.
 Aside from the web application, it also provides a REST API for consuming the data programmatically.
 
-We use the Scopus API to retrieve ranked lists of publications for different queries, and then use the ranking of the publications as the source of the ``global relevance'' for the search query in the benchmark.
+We use the Scopus API to retrieve ranked lists of publications for different queries and then use the ranking of the publications as the source of the ``global relevance'' for the search query in the benchmark.
 Simply put, by comparing the (ranking of the) search results in our search engine to the results of the Scopus search engine, we determine the relevance of the search results.
 
 We are expecting the search results of the Scopus search engine to be more precise and relevant than the ones of the Charles Explorer search engine -
@@ -354,7 +353,7 @@ We use it to generate a large set of diverse queries, perhaps less biased than a
 We start by selecting a set of \textit{seed words} - in our experimental case, those were the words \textit{``field of study''} and \textit{``medicine''}.
 Then, we traverse the wordnet to recursively find the hyponyms of those seed words, up to a certain depth.
 
-Running this process for the seed words \textit{``field of study''} and \textit{``medicine''} with the depth of 4, we get a set of \texttt{915} search queries.
+Running this process for the seed words \textit{``field of study''} and \textit{``medicine''} with a depth of 4, we get a set of \texttt{915} search queries.
 
 While this approach gives us a sizable set of queries, we have no guarantee of the quality of the queries - they might be too general or too specific, or not relevant to the academic domain at all.
 One of our goals was also to ensure the fairness of the query set - this is not guaranteed by the wordnet traversal either, as the queries might be too similar to each other (or target the similar topics in the publications).
@@ -362,9 +361,9 @@ One of our goals was also to ensure the fairness of the query set - this is not 
 \subsubsection{Ensuring the query set fairness}
 
 While \textit{fairness} is a largely subjective measure, we let the available data guide us in this case.
-For the \textit{academic publications}, we have their \textit{titles}, \textit{abstracts}, \textit{keywords}, \textit{faculty affiliations} and \textit{authors} avaialble in our system.
+For the \textit{academic publications}, we have their \textit{titles}, \textit{abstracts}, \textit{keywords}, \textit{faculty affiliations}, and \textit{authors} available in our system.
 
-Since titles, abstracts and keywords are free text fields, we omit them from our analysis - the preprocessing of the text data is a complex task on its own.
+Since titles, abstracts, and keywords are free text fields, we omit them from our analysis - the preprocessing of the text data is a complex task on its own.
 Given the nature of our experiment - i.e. measuring the impact of using the social network data for the search results ranking - we have to leave the authorship information out as well.
 
 This process leaves us with the faculty affiliations.
@@ -410,7 +409,7 @@ In our case, optimizing the KL-divergence means \textit{finding a subset} of sea
 Unfortunately, this poses serious challenges. 
 Finding a subset with an optimal aggregate property is a well-known NP-hard problem - often referred to as the \textit{0-1 knapsack problem} or the \textit{subset sum problem}.
 Even worse, we cannot simply reuse some of the existing algorithms for these problems, as those rely on the distributivity and associativity of the sum operation. 
-This is however not the case for the KL divergence.
+This is, however, not the case for the KL divergence.
 
 Similarly to the sum of the item values (in the Knapsack problem), the KL divergence is evaluated on the entire set, but unlike the sum, the items themselves do not have any “value” - and their contribution to the KL divergence changes depending on the other items in the set. 
 This leaves us with a limited choice of algorithms to solve the problem. 
@@ -428,7 +427,7 @@ Stop when the KL-divergence stops decreasing, i.e. we cannot remove any more sea
 
 This is a simple and computationally cheap approach, but it might not always find the optimal solution.
 Furthermore, since the KL-divergence is a non-convex function, the second step of the algorithm might get stuck in a suboptimal solution.
-While this could be mitigated using a more complex optimization algorithm (e.g. simulated annealing etc.), experimental results show that the simple random search is sufficient for our purposes.
+While this could be mitigated using a more complex optimization algorithm (e.g., simulated annealing, etc.), experimental results show that the simple random search is sufficient for our purposes.
 
 \begin{figure}[ht!]
     \captionsetup{width=.9\linewidth}
@@ -438,7 +437,7 @@ While this could be mitigated using a more complex optimization algorithm (e.g. 
 \end{figure}
 
 Running the optimization algorithm with $n = 10000$ initial random samples of size $k = 300$ on the search query set, we arrive at a set of $174$ queries with the search result KL-divergence of \texttt{0.00317}. 
-This is a significant improvement over the original divergence of \texttt{0.0471} and we will consider this a fairer subset of the search queries for the benchmarking.
+This is a significant improvement over the original divergence of \texttt{0.0471}, and we will consider this a fairer subset of the search queries for the benchmarking.
 
 \subsection[Collecting the data]{Collecting the data\textsuperscript{\href{https://barjin.github.io/edu/thesis-blog/collecting-data/}{[blog]}}}\label{collecting-data}
 
@@ -458,10 +457,10 @@ We will use two of the available functors: \texttt{TITLE-ABS-KEY} and \texttt{AF
 \begin{itemize}
     \item \texttt{TITLE-ABS-KEY} searches for the specified substring in the title, abstract, and keywords of the publication record. 
     In this regard, it is similar to the full-text search in Charles Explorer, which searches in the same fields.
-    \item \texttt{AF-ID} filters the search results by the organisation affiliation of the publication. This is useful for filtering the search results to only those publications where at least one of the authors is affiliated with Charles University. Since Elsevier Scopus contains many records not affiliated with Charles University (but Charles Explorer only contains such records), this will help us to get a more comparable sets of search results.
+    \item \texttt{AF-ID} filters the search results by the organization affiliation of the publication. This is useful for filtering the search results to only those publications where at least one of the authors is affiliated with Charles University. Since Elsevier Scopus contains many records not affiliated with Charles University (but Charles Explorer only contains such records), this will help us to get a more comparable set of search results.
 \end{itemize}
 
-By calling the Scopus API, we get the search results in JSON format, which we then process and store in our database for the benchmarking.
+By calling the Scopus API, we get the search results in JSON format, which we then process and store in our database for benchmarking.
 
 \begin{figure}[ht!]
         \scriptsize
@@ -480,18 +479,18 @@ By calling the Scopus API, we get the search results in JSON format, which we th
 \end{figure}
 
 We see that the \texttt{ranking} column - the position of a publication in the search results - is only very weakly correlated with the other numeric attributes of the search results.
-This suggests that the default Scopus ranking is mostly influenced by the full-text search relevance and does not take any further attributes into account.
-The strongest correlated attribute is the \texttt{pubYear} - this suggest that the older publications are ranked higher in the search results.
-However, the absolute value of the correlation coeficient (\texttt{0.109848}) is still very low.
+This suggests that the default Scopus ranking is mostly influenced by full-text search relevance and does not take any further attributes into account.
+The strongest correlated attribute is the \texttt{pubYear} - this suggests that the older publications are ranked higher in the search results.
+However, the absolute value of the correlation coefficient (\texttt{0.109848}) is still very low.
 
-It also suggest that the Scopus result ranking might not be too dependent on the social network measures and that we might not be able to improve the ranking 
+It also suggests that the Scopus result ranking might not be too dependent on the social network measures and that we might not be able to improve the ranking 
 by using the social network data (as the ``explicit'' social network data like the citation count or the reference count are already not correlated with the ranking).
 
 \subsection[Simulating relevance feedback]{Simulating relevance feedback\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/ndcg-benchmark/}{[blog]}}}
 
 With the data collected, we now proceed with the actual analysis of the search results ranking in Charles Explorer.
 
-Considering the Scopus search results as the gold standard, we calculate the per-query precision, recall and $F_1$ score for the search results of Charles Explorer.
+Considering the Scopus search results as the gold standard, we calculate the per-query precision, recall, and $F_1$ score for the search results of Charles Explorer.
 
 \begin{figure}[!ht]
     \captionsetup{width=.9\linewidth}
@@ -507,7 +506,7 @@ Considering the Scopus search results as the gold standard, we calculate the per
     \caption{Per-query precision, recall and $F_1$ score for the search results of Charles Explorer.}
 \end{figure}
 
-After aggregation over all the queries, this gives us the following unfavourable statistics:
+After aggregation over all the queries, this gives us the following unfavorable statistics:
 
 \begin{figure}[!ht]
     \captionsetup{width=.9\linewidth}
@@ -554,19 +553,19 @@ This should help us to relate the publications missing from the Scopus search re
 We enhance the relevance calculation with the similarity search process as follows:
 
 \begin{enumerate}
-    \item By the means of an \textit{LLM embedding model}, we precalculate the embeddings for the publication titles of the Elsevier Scopus search results. 
+    \item By means of an \textit{LLM embedding model}, we precalculate the embeddings for the publication titles of the Elsevier Scopus search results. 
     We store these embeddings in a vector database.
     \item For each publication title in the Charles Explorer search results, we calculate its embedding. 
     In the database, we search for the nearest embedding among Scopus search results embeddings. 
-    Futhermore, we require the retrieved document to be a result of the same query (in Elsevier Scopus) as the Charles Explorer search result.
-    \item We calculate Charles Explorer document’s inferred relevance from the most similar document’s attributes - e.g. its position in Scopus search.
+    Furthermore, we require the retrieved document to be a result of the same query (in Elsevier Scopus) as the Charles Explorer search result.
+    \item We calculate the Charles Explorer document’s inferred relevance from the most similar document’s attributes - e.g., its position in Scopus search.
 \end{enumerate}
 
 For the document embedding, we use the \texttt{all-MiniLM-L6-v2}\footnote{\url{https://www.sbert.net/docs/sentence_transformer/pretrained_models.html}} sentence - transformer model. 
 This is a general-purpose English embedding language model designed for running on consumer-grade hardware. 
 Due to its small size and competitive performance, it’s often used for the real-time use-cases, like semantic search or RAG (Retrieval-Augmented Generation).
 
-For the similarity search on the embeddings we use the ChromaDB database\footnote{\url{https://www.trychroma.com/}}. 
+For the similarity search on the embeddings, we use the ChromaDB database\footnote{\url{https://www.trychroma.com/}}. 
 ChromaDB is a vector database designed for the similarity search on the embeddings, with support
 for enhancing the search results with the additional metadata attributes of the documents.
 
@@ -577,15 +576,15 @@ for enhancing the search results with the additional metadata attributes of the 
     \caption{Histogram of inferred positions of the Charles Explorer search results in the Scopus search results.}
 \end{figure}
 
-This process gives us the predicted rankings which follow a rather skewed distribution. 
+This process gives us the predicted rankings, which follow a rather skewed distribution. 
 However, this does not pose a serious problem to our benchmark.
 
 Firstly, we are not trying to predict the exact ranking of the search results, but rather to assign a relevance score to each search result. 
 The peak of the distribution is at the top of the rankings, 
-which is in line with the well known tendency of human users 
-to have much clearer opinion about the few top results than the long tail of the search results (as described by e.g. \cite{9357332}).
+which is in line with the well-known tendency of human users 
+to have a much clearer opinion about the few top results than the long tail of the search results (as described by, e.g., \cite{9357332}).
 
-Secondly, the left-skewed distribution might be caused by non-uniform lengths of the search result lists. 
+Secondly, the left-skewed distribution might be caused by the non-uniform lengths of the search result lists. 
 Since for some of the queries, Scopus returns only a few relevant search results (100 is only the maximum limit), 
 the resulting predicted rankings will be skewed towards the top of the list for these queries.
 
@@ -603,7 +602,7 @@ $$
 
 The IDCG score is the DCG score of the ideal ranking of the search results, i.e. the items in the list are sorted in descending order by $rel_i$.
 
-Normalized DCG score is then calculated as the ratio of the DCG score to the IDCG score.
+The normalized DCG score is then calculated as the ratio of the DCG score to the IDCG score.
 
 $$
 nDCG_{\text{list}} = \frac{DCG_\text{list}}{IDCG_\text{list}}
@@ -624,12 +623,12 @@ where $a$ is a constant that scales the relevance scores and can help achieve be
 stability of the nDCG score with respect to rounding errors.
 
 For the purpose of the experiments in this thesis, we set $a = 5$. 
-The $+1$ in the denominator is necessary to avoid division by zero, as our rankings are $0-$based.
+The $+1$ in the denominator is necessary to avoid division by zero, as our rankings are $0-$ based.
 
 While it would be possible to achieve the ranking $\rightarrow$ relevance transformation via e.g. subtracting the predicted ranking from the total number of search results, 
 our proposed method with $rel_q(d)$ introduces a \textit{non-linear} transformation of the predicted rankings. 
 This differentiates better between the search results that are ranked higher in the Scopus search results. 
-This is again in line with the beforementioned tendency of the human users to have clearer opinions about the top search results.
+This is again in line with the aforementioned tendency of human users to have clearer opinions about the top search results.
 
 \subsection{Baseline benchmark}\label{baseline-benchmark}
 
@@ -695,9 +694,9 @@ This seemingly confirms our hypothesis that the Scopus search result ranking is 
 
 \textbf{Neural networks}: The second proposed solution suggests training a neural network to predict the final relevance scores based on the original relevance scores and the social network metrics.
 As mentioned before, this might help with finding the non-linear relationships between the features and the final relevance scores.
-On the other side, such model is less interpretable than the linear regression model.
+On the other side, such a model is less interpretable than the linear regression model.
 
-Training an neural network ($2$ hidden layers, $100$ neurons each) on the same training dataset ($n=9600$) as the linear regression model gives us a \ac{MSE} of $2.0498$ on the test data ($n=2265$).
+Training a neural network ($2$ hidden layers, $100$ neurons each) on the same training dataset ($n=9600$) as the linear regression model gives us a \ac{MSE} of $2.0498$ on the test data ($n=2265$).
 We see that in this regard, the neural network model outperforms the linear regression model only marginally.
 This further suggests that the relationships between the features and the final relevance scores are rather simple and can be captured by a linear model.
 
@@ -736,26 +735,26 @@ This hints at the high dimensionality of the problem and the lack of generalizat
 As mentioned before, the Scopus search result ranking is likely mainly influenced by the relevance of 
 the search results themselves, rather than any other - more global - publication measures. 
 In a way, the fact that the graph measures do not help with the reranking does not come as a surprise. 
-This might be also partially caused by the title similarity search step, which helps with the missing publications problem.
+This might also be partially caused by the title similarity search step, which helps with the missing publications problem.
 
 This shows that the Scopus search result ranking is likely not a good proxy for the relevance feedback,
 if searching for a global relevance measure of the publications.
 
 \section[Predicting the citation count]{Predicting the citation count\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/citation-count/}{[blog]}}}
 
-As we have noticed before, the search results ranking we have acquired from Scopus is mostly based on the raw query relevance. 
-Because of this, it might be also riddled with the problems we have discussed in \hyperref[search-ranking-issues]{Subsection \ref*{search-ranking-issues}} - 
+As we have noticed before, the search results ranking we have acquired from Scopus is mostly based on raw query relevance. 
+Because of this, it might also be riddled with the problems we have discussed in \hyperref[search-ranking-issues]{Subsection \ref*{search-ranking-issues}} - 
 such as the susceptibility to (potentially malicious) search engine optimization.
 
-In search for a better ranking system for Charles Explorer, we try to predict the \textit{citation count} of the papers based on the local graph measures we have calculated in the previous section. 
+In search of a better ranking system for Charles Explorer, we try to predict the \textit{citation count} of the papers based on the local graph measures we have calculated in the previous section. 
 This decision comes from the idea that the \textit{citation count} is a good indicator of the importance of the paper that cannot be easily interfered with by the authors.
 
 Unlike the search result ranking optimization from the previous sections, the citation count inference is a popular research topic in the field of bibliometrics.
-Notably, \cite{ABBASI2011594} explores the influence of small scale graph neighborhoods of authors on their academic performance and the citation count of their papers.
+Notably, \cite{ABBASI2011594} explores the influence of small-scale graph neighborhoods of authors on their academic performance and the citation count of their papers.
 
 \subsection{Sourcing the data}
 
-Unfortunately, in the data collected for the previous sections' benchmarking we do not have the citation count of the publications.
+Unfortunately, in the data collected for the previous sections' benchmarking, we do not have the citation count of the publications.
 Reusing the Scopus API access from \hyperref[collecting-data]{Subsection \ref*{collecting-data}}, we can retrieve the citation count for the publications in our system.
 
 This shrinks the dataset to $n = 962$ publications, as the Scopus API does not contain all the publications in our system.
@@ -790,14 +789,14 @@ Note that from the linear regression coefficients, it seems that the \texttt{deg
 This is in line with the findings of \cite{ABBASI2011594}, which - while inspecting slightly different graph measures - also found the \texttt{degree} of the publications to be the most important feature for the prediction of the citation count.
 
 \textbf{Neural network}: The second model is a neural network model, which tries to predict the citation count of the publications based on the local graph measures.
-Training an neural network ($2$ hidden layers, $100$ neurons each) on the training dataset ($n=768$) gives us a \ac{MSE} of $7425.57273$ on the test data ($n=194$).
+Training a neural network ($2$ hidden layers, $100$ neurons each) on the training dataset ($n=768$) gives us a \ac{MSE} of $7425.57273$ on the test data ($n=194$).
 
 Note that in terms of the \ac{MSE}, neither of the models is performing especially well - in the absolute numbers of \ac{RMSE}, the models are off by approximately $80$ citations on average.
 This is a significant error, considering that the average citation count in the dataset is $30$.
 
 \subsection[Citation-based ranking]{Citation-based ranking\textsuperscript{\href{https://jindrich.bar/edu/thesis-blog/citation-count/\#citation-based-ranking}{[blog]}}}\label{citation-based-ranking}
 
-Note that despite the unfavourable results of the previous experiments - i.e. predicting the absolute value of the citation count - we might still be able to use the citation count as a proxy for the global relevance of the publications.
+Note that despite the unfavorable results of the previous experiments - i.e., predicting the absolute value of the citation count - we might still be able to use the citation count as a proxy for the global relevance of the publications.
 
 This is beause the ranking benchmarks (and human users of search engines) are usually not be interested in the exact citation count, but rather in the relative importance of the publications. 
 Both benchmarks and users also tend to discount the publications further down in the search result list.
@@ -815,5 +814,4 @@ In the last experiment, we calculate the nDCG score of the search results in Cha
 \end{figure}
 
 We see that both the methods utilizing the graph measures for the citation count prediction are performing much better than the baseline benchmark.
-This confirms our hypothesis from the beginning of this subsection - while the graph measures might not provide enough data for the absolute prediction of the citation count, 
-they can still be well utilized for the relative ranking of the publications.
+This confirms our hypothesis from the beginning of this subsection - while the graph measures might not provide enough data for the absolute prediction of the citation count, they can still be utilized to rank the publications.

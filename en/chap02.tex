@@ -2,48 +2,48 @@
 
 The data about the academic researchers and their publications at \ac{CUNI} is internally stored in a relational database. 
 The first chapter of this thesis explores the transformation of the relational data model into a graph data model, 
-which will allow us to use the graph algorithms for the social network analysis.
+which will allow us to use the graph algorithms for social network analysis.
 
 We also address pitfalls and challenges of the transformation stemming 
 from the specific nature of the data and the technical limitations of the source systems.
 
 \section{Input data format}
 
-The Charles University information system is composed of a set of separate systems and applications.
+The Charles University information system comprises a set of separate systems and applications.
 
-The \textit{Studium} information system\footnote{Available at \url{https://is.cuni.cz/studium/}.} contains the data about the researchers, teachers, the courses and study programmes available at the university.
+The \textit{Studium} information system\footnote{Available at \url{https://is.cuni.cz/studium/}.} contains the data about the researchers, teachers, courses, and study programs available at the university.
 
-The \textit{Věda} information system\footnote{Available at \url{https://is.cuni.cz/veda/}, login only.} aggregates the data about creative activities of the researchers, the research projects and inter-university mobility programmes.
-For the purpose of this thesis, we are mostly interested in the \ac{OBD} (or Verso) module, containing the data about the academic publications.
+The \textit{Věda} information system\footnote{Available at \url{https://is.cuni.cz/veda/}, login only.} aggregates the data about the creative activities of the researchers, the research projects, and inter-university mobility programs.
+For this thesis, we are primarily interested in the \ac{OBD} (or Verso) module, containing data about academic publications.
 
 The \textit{Whois} staff information system\footnote{Available at \url{https://is.cuni.cz/webapps/whois2}.} contains the data about the employees of the university, 
 their affiliations with the faculties and departments and their academic titles.
 
 While none of the systems offer public APIs, a data import pipeline has been set up by \ac{ÚVT} (the university's IT department) in advance
-for the purpose of the Charles Explorer application. 
+for the Charles Explorer application. 
 This pipeline consists of a set of database views tracking the changes in the data and a script\footnote{\url{https://gitlab.mff.cuni.cz/barj/charles-explorer/-/blob/master/scripts/export.sh}} that exports the data to an SQLite database.
 
 
 \section{Target data model}\label{sec:target-data-model}
 
-We aim to transform the relational data model into a graph data model, which will allow us to use the graph algorithms for the social network analysis.
+We aim to transform the relational data model into a graph data model, allowing us to use the graph algorithms for the social network analysis.
 
-While the available data would allow us to create a multi-relational graph model with different types of nodes and edges (e.g. \textit{Person}, \textit{Publication}, \textit{Course}, \textit{Study programme}), 
+While the available data would allow us to create a multi-relational graph model with different types of nodes and edges (e.g., \textit{Person}, \textit{Publication}, \textit{Course}, \textit{Study program}), 
 we limit the scope of this thesis to the social network between the \textbf{academic researchers} and their \textbf{publications}.
 
-From the view of the input data, this is the largest and most interconnected part of the data, which will allow us to demonstrate the capabilities of the graph algorithms.
-The connections in the resulting graph are also easily interpretable (e.g. the co-authorship relations between the researchers, the authorship relations between the researchers and the publications).
+From the view of the input data, this is the most significant and most interconnected part of the data, which will allow us to demonstrate the capabilities of the graph algorithms.
+The connections in the resulting graph are also easily interpretable (e.g. the coauthorship relations between the researchers, the authorship relations between the researchers and the publications).
 
-The nodes of the graph will represent the academic researchers and the publications, while the edges will represent the co-authorship relations between the researchers and the authorship relations between the researchers and the publications.
+The graph nodes will represent the academic researchers and the publications. In contrast, the edges will represent the coauthorship relations between the researchers and the authorship relations between the researchers and the publications.
 
 We can notice that the graph is a \textit{bipartite graph}, as the nodes can be divided into two disjoint sets - the set of the researchers and the set of the publications.
 
 \subsection{Exploring the schema}
 
-To illustrate the structure of the input data, we provide an example of the schema of the relational database together with example data.
-Since this thesis focuses on the social network between the academic researchers and their publications, we limit this example only on the relevant parts of the schema.
+We provide an example of the schema of the relational database together with example data to illustrate the structure of the input data.
+Since this thesis focuses on the social network between academic researchers and their publications, we limit this example only to the relevant parts of the schema.
 
-The social network-relevant data accessible in the following three database views:
+The social network data is accessible in the following three database views:
 
 \begin{Verbatim}[commandchars=\\\{\}]
 PERSON (
@@ -56,7 +56,7 @@ PERSON (
 \end{Verbatim}
 
 The \texttt{Person} view contains the data about the academic researchers and teachers at the university.
-While the \texttt{TYPE} column might suggest that the table contains records about external people as well (e.g. guest co-authors of publications published by the \ac{CUNI} researchers),
+While the \texttt{TYPE} column might suggest that the table includes records about external people as well (e.g., guest co-authors of publications published by the \ac{CUNI} researchers),
 it only contains the data about the people affiliated with the university. The \texttt{TYPE} column is only used to distinguish between the different employment types at the university.
 
 \begin{Verbatim}[commandchars=\\\{\}]
@@ -75,9 +75,9 @@ PUBLICATION_KEYWORDS (
 
 This schema shows some more issues with the data - the \texttt{PUBLICATION\_KEYWORDS} is missing a single primary key attribute,
 as the \texttt{PUBLICATION\_ID} is not unique across the table. This is because the same publication can have multiple records in the table,
-each record representing a different language version of the title, abstract and keywords.
+each representing a different language version of the title, abstract, and keywords.
 
-Moreover, the \texttt{PUBLICATION\_KEYWORDS} view does not contain an universally accepted publication identifier (e.g. a \ac{DOI} or an \ac{ISBN}) 
+Moreover, the \texttt{PUBLICATION\_KEYWORDS} view does not contain a universally accepted publication identifier (e.g., a \ac{DOI} or an \ac{ISBN}) 
 that would allow us to link the publication to the external sources of the publication data.
 This is because of a technical limitation of the information systems, as the \ac{OBD} module is not fully interoperable with the \textit{Studium} module we are 
 consuming the data from.
@@ -100,16 +100,16 @@ and the records of the \texttt{PUBLICATION\_AUTHOR\_ALL} view into the edges of 
 \subsection{Missing identities}\label{sec:inferring-missing-identities}
 
     In the \hyperref[sec:pub-author-all]{comment} for the \texttt{PUBLICATION\_AUTHOR\_ALL.PERSON\_ID} column, we note that the \ac{UKČO} personal number is not always available.
-    This is because of external authors, who are not affiliated with the university and do not have a \ac{UKČO} personal number.
-What is worse, such authors are only identified by their name, which can be inconsistent across the publications.
+    This is because of external authors who are not affiliated with the university and do not have a \ac{UKČO} personal number.
+What is worse, such authors are only identified by their names, which can be inconsistent across the publications.
 This is again caused by the limited interoperability of the data source modules - however, note 
-that this problem is present in larger academic search engines (e.g. Google Scholar) too.
+that this problem is present in larger academic search engines (e.g., Google Scholar) too.
 
-Aside from the obvious implications of this issue - i.e. user confusion and potential performance issues,
+Aside from the obvious implications of this issue - i.e., user confusion and potential performance issues,
 this also poses a challenge for the social network analysis, as the graph algorithms might not be able 
 to correctly identify the external authors.
 
-    In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the relations mentioning the authors with / without the \ac{UKČO} personal number are as follows:
+    In the aforementioned \texttt{PUBLICATION\_AUTHOR\_ALL} view, counts of the relations mentioning the authors with/without the \ac{UKČO} personal number are as follows:
 
 \begin{figure}[!ht]
     \captionsetup{width=.9\linewidth}
@@ -124,17 +124,17 @@ to correctly identify the external authors.
 \end{figure}
 
 We see that the no-identifier authors take up to 45\% of the total count of the relations.
-This explains the importance of the problem of inferring the missing identities.
+This explains the importance of inferring missing identities.
 
 \section{Identity inference - Naïve approach}\label{sec:naive-approach}
 
 The naïve solution to this problem is using the \textit{names} for the identity inference 
 in case of missing identifiers.
-While this is a simple and straightforward transformation, it has obvious drawbacks.
+While this is a simple transformation, it has obvious drawbacks.
 
 Firstly, the names are not guaranteed to be \textit{unique} across the dataset. 
 
-Secondly, the names are not guaranteed to be \textit{consistent} across the dataset - due to (e.g. marital) name changes, 
+Secondly, the names are not guaranteed to be \textit{consistent} across the dataset - due to (e.g., marital) name changes, 
 typos, or different conventions in the academic titles.
 See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBLICATION\_AUTHOR\_ALL} view:
 
@@ -155,8 +155,8 @@ See the example of a search for the name ``Jaroslav Peška'' in the \texttt{PUBL
 
 \footnotetext{PERSON\_ID redacted for privacy reasons, replaced by truncated PERSON\_WHOIS\_ID.}
 
-    While there are 5 variants of the same name in the dataset, only one of them is correctly linked to the \ac{UKČO} personal number.
-This could have been caused by human error on data input or by the limitations of the source systems. 
+    While there are five variants of the same name in the dataset, only one is correctly linked to the \ac{UKČO} personal number.
+This could have been caused by human error in data input or by the limitations of the source systems. 
 Either way, this creates an unrecoverable loss of information in the dataset.
 
 \subsection{Algorithm}
@@ -178,23 +178,23 @@ We require $f$ to map all person names to a \textit{normalized form}, which is d
 \end{itemize}
 
 We can see that in the case of \hyperref[fig:jaroslav-peska]{Jaroslav Peška}, 
-the normalized version for all the variants is the same (i.e. $f(\texttt{PERSON\_NAME}) = \texttt{jaroslav peska}$).
+the normalized version for all the variants is the same (i.e., $f(\texttt{PERSON\_NAME}) = \texttt{jaroslav peska}$).
 
 If we decide to add the output of this normalization function as an attribute in the \texttt{PUBLICATION\_AUTHOR\_ALL} view,
-we can proceed with the merging of the records using SQL GROUP BY and the aggregation functions.
+We can proceed with merging the records using SQL GROUP BY and the aggregation functions.
 
 \subsection{Implementation}
 
-For the implemetation of the name normalization function, we use the SQLite loadable extensions mechanism.
+For the implementation of the name normalization function, we use the SQLite loadable extensions mechanism.
 The transformation itself is done in three steps:
 
 \begin{enumerate}
     \item Using the \texttt{glib} function \texttt{g\_utf8\_normalize}, the string representation of the name is normalized to the canonical Unicode \ac{NFD} form.
     This step ensures that the byte representation of diacritized characters is now composed of separate characters for the base character and the diacritics (e.g. \texttt{ě}\texttt{(U+011B)} is decomposed to \texttt{e}\texttt{(U+0065)} and \texttt{ˇ}\texttt{(U+02C7)}).
-    \item We scan the normalized string and remove all the characters that are not in the range of the Latin alphabet. We convert the all the 
+    \item We scan the normalized string and remove all the characters that are not in the range of the Latin alphabet. We convert all the 
     alphabetic characters to lowercase and replace all the whitespace characters with a single space.
     \item Using regular expressions, we remove the academic titles from the name. 
-    We construct the expression by defining a list of the academic titles and concatenating them using the alternative separator \texttt{|} (e.g. \texttt{PhDr.|Ph.D.}).
+    We construct the expression by defining a list of the academic titles and concatenating them using the alternative separator \texttt{|} (e.g., \texttt{PhDr.|Ph.D.}).
     We then use this regex to find the start index of the actual person name in the string
     and use the \texttt{glib} function \texttt{g\_strndup} to extract the substring.
 \end{enumerate}
@@ -205,13 +205,13 @@ The full implementation of the normalization function is available in the GitHub
     {SQLite Loadable Extensions}
 
     While it would be possible to implement the normalization function using inbuilt scalar SQLite functions (namely \texttt{lower}, \texttt{trim},
-    and repeated use of \texttt{replace}), the developer experience of such solution is suboptimal, as it requires a lot of nested function calls
+    and repeated use of \texttt{replace}), the developer experience of such a solution is suboptimal, as it requires a lot of nested function calls
     in the \texttt{SELECT} clause.
 
-    Because the way the scalar functions are defined in SQLite - and their implementation\footnote{\url{https://sqlite.org/src/file?name=src/func.c}}, 
+    Because of the way the scalar functions are defined in SQLite - and their implementation\footnote{\url{https://sqlite.org/src/file?name=src/func.c}}, 
     the repeated calls to \texttt{replace} also result in repeated string allocations and deallocations - which can be a performance bottleneck.
 
-    Fortunately, SQLite allows the user to define their own loadable extensions\footnote{\url{https://www.sqlite.org/loadext.html}} in C.
+    Fortunately, SQLite allows users to define their own loadable extensions\footnote{\url{https://www.sqlite.org/loadext.html}} in C.
     This allows us to define the normalization function in C and load it as a scalar function in the SQLite database.
 \end{mybox}
 
@@ -221,8 +221,8 @@ The implementation can also be found in the GitHub repository\footnote{\url{http
 
 \subsection{Performance}
 
-As mentioned in the infobox above, the SQLite extension for normalizing the names should provide a performance improvement over the composed scalar functions.
-To test this hypothesis, we repeatedly construct a temporary table with the normalized names using the both scalar functions and the extension.
+As mentioned in the infobox above, the SQLite extension for normalizing the names should improve performance over the composed scalar functions.
+To test this hypothesis, we repeatedly construct a temporary table with the normalized names using both scalar functions and the extension.
 
 \begin{figure}[!ht]
 \begin{verbatim}
@@ -237,7 +237,7 @@ CREATE TABLE test AS
 \end{figure}
 
 SQLite engine has a default limit on the maximum expression tree depth of 1000\footnote{\url{https://www.sqlite.org/limits.html\#max_expr_depth}}.
-This limit is quite low and can be easily reached when using the composed scalar functions.
+This limit is relatively low and can be easily reached using the composed scalar functions.
 
 Because of this limitation, we are not replacing all of the academic titles in the \textit{composed scalar functions} case of the experiment.
 Even with the reduced number of operations, the composed scalar functions seem to be much slower than the SQLite extension:
@@ -250,16 +250,16 @@ Even with the reduced number of operations, the composed scalar functions seem t
 \end{figure}
 
 The Python reference implementation is expectedly much slower than both the SQLite extension and the composed scalar functions.
-This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - as compared to the native data access of the SQLite extension.
+This is likely caused by the interface read-write overhead of the Python \texttt{sqlite3} library - compared to the native data access of the SQLite extension.
 
 \subsection{Results evaluation}\label{sec:results-assessment}
 
 Even though the missing identifiers of the external authors make actual evaluation of this method impossible, 
-we can assess the effectiveness of the naïve merging approach on the set of the \textbf{internal authors} (i.e. authors with existing explicit indentifiers).
-By comparing the identities inferred by the proposed method with the actual existing identifiers, we evaluate the accuracy of the method.
+we can assess the effectiveness of the naïve merging approach on the set of the \textbf{internal authors} (i.e., authors with existing explicit identifiers).
+By comparing the identities inferred by the proposed method with the existing identifiers, we evaluate the method's accuracy.
 
 Note that this only works under the assumption that the names of the external (no-identifier) authors follow a similar distribution as the names of the internal authors.
-While this might not be completely true - as external authors might e.g. be more likely to be foreign nationals, perhaps with different naming conventions - we consider this assumption a reasonable simplification.
+While this might not be completely true—as external authors might, for example, be more likely to be foreign nationals, perhaps with different naming conventions—we consider this assumption a reasonable simplification.
 
 To define metrics for the evaluation, let us first reformulate the identity inference \textit{on the labeled data} as a classification problem:
 
@@ -279,9 +279,9 @@ $$
     \end{itemize}
 \end{itemize}
 
-Note that this proposed classifier is simply grouping all the records with the same normalized name together under one deterministically selected identifier.
+Note that this proposed classifier simply groups all the records with the same normalized name under one deterministically selected identifier.
 
-As we now defined the algorithm as a classification problem, we can use the standard classification metrics to evaluate the performance of the method.
+As we now define the algorithm as a classification problem, we can use the standard classification metrics to evaluate the method's performance.
 Since the task is a multi-class classification, we calculate the \textit{macro} and \textit{micro-$F_1$ score}.
 
 For the dataset of $39523$ known-distinct internal authors, the grouping by the normalized names results in $35610$ merged records.
@@ -304,45 +304,45 @@ The evaluation metrics of the naïve merging method are as follows:
 
 \subsection{Issues with the naïve approach}
 
-While the name-based merging approach is simple and straightforward, it poses several issues.
-Firstly, name based merging can be cause over-merging in the case of the authors with common names.
+While the name-based merging approach is simple, it poses several issues.
+Firstly, name-based merging can cause over-merging in the case of authors with common names.
 
-Secondly, in the proposed algorithm there is no support for the existing identifiers from the dataset.
+Secondly, the proposed algorithm does not support the existing identifiers from the dataset.
 By only inferring the identifier from the name, we willingly discard the existing information about the person.
 
 The latter problem could be partially solved by coalescing the inferred identifiers with the existing ones.
 Using the SQL \texttt{COALESCE} function, we can create a new column in the \texttt{PUBLICATION\_AUTHOR\_ALL} view that would contain the inferred identifier only if the original one is missing.
 
-However, such approach would only fully work in the case of only internal - or only external authors.
-In the case of the internal authors with few records with missing identifiers (e.g. \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
-this would still result in the creation of up to two nodes for the same person (i.e. \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
+However, such an approach would only fully work in the case of only internal - or only external authors.
+In the case of the internal authors with few records with missing identifiers (e.g., \hyperref[fig:jaroslav-peska]{Jaroslav Peška}),
+this would still result in the creation of up to two nodes for the same person (i.e., \texttt{14124313...} for the ``internal'' records and \texttt{jaroslav-peska} for the ``external'' ones).
 
 \label{sec:on-demand-identity-inference}
 \begin{mybox}{``On-demand'' naïve identity inference}
 
-In an attempt to first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
+In an attempt to address the first mentioned issue - the over-merging of the authors with common names - we slightly modify the algorithm.
 
 Instead of merging the records directly in the database, we merge the records on-demand in the application's visualization layer.
-If we e.g. restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
+If we e.g., restrict the direct views only to internal authors - and show the external authors only as collaborators of those,
 we can reuse the naïve approach quite effectively.
 
-By restricting the domain of the mergeable records to a smaller, tighter subcomunity of the graph (i.e. collaborators of one internal author), 
-we reduce the number of the possible false positives in the merging.
+By restricting the domain of the mergeable records to a smaller, tighter subcommunity of the graph (i.e., collaborators of one internal author), 
+we reduce the number of possible false positives in the merging.
 
-Obviously, this approach still carries the risk of the false positives in case of different external authors with the same name in the same subcommunity.
+Obviously, this approach still carries the risk of false positives in the case of different external authors with the same name in the same subcommunity.
 
-Also note that this approach only improves the user experience with the application.
+Also, note that this approach only improves the user experience with the application.
 Using this, every external author's coauthorship is stored as a separate node in the graph, which can negatively impact the performance of the graph algorithms.
 \end{mybox}
 
 \section{Identity inference - Hierarchical clustering}
 
 To solve the issues of the naïve approach, we can try to use the graph structure of the data to infer the missing identities.
-In the following subsection we propose an algorithm using the \textit{hierarchical clustering} methods to group the nodes from similar parts of the graph together.
-In the end of the subsection, we evaluate the performance of the proposed method on the labeled data.
+In the following subsection, we propose an algorithm using the \textit{hierarchical clustering} methods to group the nodes from similar parts of the graph together.
+At the end of the subsection, we evaluate the performance of the proposed method on the labeled data.
 
 In the realm of data mining and statistics, \textit{hierarchical clustering} is an umbrella term for a set of unsupervised learning algorithms for grouping
-given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In case of top-down clustering, the process is reversed.}
+given data points into a hierarchy of clusters. Typically, these algorithms iteratively merge the closest clusters together, until only one cluster remains.\footnote{In the case of top-down clustering, the process is reversed.}
 The distance metric used for the clustering can be any metric that defines the similarity between the data points.
 
 \subsection{Algorithm}\label{sec:distance-based-hierarchical-clustering}
@@ -370,9 +370,9 @@ Because of this, any path between two person-type nodes is even-lengthed.
 Therefore, the shortest path distance between two person-type nodes is 2.
 
 Additionally, the shortest path distance between two \textit{mergeable} nodes is 4.
-This is based on an observation that two person nodes in distance 2 are connected to the same publication node.
+This is based on an observation that two-person nodes in the distance 2 are connected to the same publication node.
 In case there are two merge candidates (based on the naïve mergeability requirement) connected to the same publication node,
-these should not be considered \textit{mergeable}, as the publication is expected to list unique authors - i.e. the candidates are
+these should not be considered \textit{mergeable}, as the publication is expected to list unique authors - i.e., the candidates are
 different people with the same name.
 
 \subsection{Implementation}
@@ -403,14 +403,14 @@ Loading the social network into Memgraph\footnote{An open-source in-memory graph
 \label{fig:distance-matrix-calculation}
 \end{figure}
 
-\footnotetext{Rather curiously, passing the IDs array as a parameter results in a highly inefficient execution plan in Memgraph causing a full scan of the nodes followed by a filter on the PERSON\_ID.
+\footnotetext{Rather curiously, passing the IDs array as a parameter results in a highly inefficient execution plan in Memgraph, causing a full scan of the nodes followed by a filter on the PERSON\_ID.
 Inlining the parameter array into the query causes Memgraph to use faster indexed access.}
 
 In this query, \texttt{\$queryCandidates} is an array containing the node identifiers of the merge candidates for a given normalized name group.
 Note that the query results can also be paginated using the \texttt{SKIP} and \texttt{LIMIT} clauses.
 
 Preliminary experiments show that the query execution time is around \texttt{5.37} ms per pair of nodes.
-Calculating the matrix of e.g. \texttt{490000} pairs (for an external author consisting of 700 merge candidates) would take around 43 minutes.
+Calculating the matrix of, e.g., \texttt{490000} pairs (for an external author consisting of 700 merge candidates) would take around 43 minutes.
 While this is a one-time operation - and the distances cannot change, as the external author nodes are always connected only to the one publication they are attributed to - this still leaves space for optimization.
 
 %% todo add graphs
@@ -453,12 +453,12 @@ Note that the \texttt{PERSON\_ID} in the query above is either the internal pers
 Unfortunately, even with the projected graph, the performance of the shortest path distance calculation in Memgraph is still suboptimal. 
 With the mean time of \texttt{5.68} ms per pair of nodes, this approach does not provide any significant performance improvement over the original one.
 
-This might be caused by the specific structure of the academic social network, where the person nodes are connected by a much small number of publication nodes.
+This might be caused by the specific structure of the academic social network, where the person nodes are connected by a much smaller number of publication nodes.
 This is especially true with the graph with external authors, where the external author nodes are connected only to the one publication node.
 
-Note that the BFS algorithm has complexity of $\mathcal{O}(V + E)$, where $V$ is the number of the nodes and $E$ is the number of the edges.
+Note that the BFS algorithm has the complexity of $\mathcal{O}(V + E)$, where $V$ is the number of nodes and $E$ is the number of edges.
 While the monopartite projection reduces the number of the nodes in the graph, it does not reduce the number of the edges - as the publication nodes are replaced 
-by the edges between the all the coauthoring person nodes. 
+by the edges between all the coauthoring person nodes. 
 
 In case of the process described with the \hyperref[fig:monopartite-projection]{Figure 2.6}, each publication node is replaces 
 by $k$ edges, where 
@@ -472,12 +472,12 @@ for $deg(v)$ being the \hyperref[def:node-degree]{degree} of the publication nod
     {Optimization: BFS ``vectorization''}
 
     Memgraph resolves the \hyperref[fig:distance-matrix-calculation]{Cypher query} for calculating the distance matrix
-    with execution plan that includes a shortest path operation for \textit{each node pair}.
+    with an execution plan that includes a shortest path operation for \textit{each node pair}.
 
     While Memgraph uses a slightly optimized algorithm\footnote{Expanding the BFS fringe from both ends (\href{https://github.com/memgraph/memgraph/blob/58c3902c194e80a027d141788bd1afd07def0114/src/query/plan/operator.cpp\#L1569-L1572}{see source on GitHub}).} for calculating the shortest path distance between the two nodes,    
     the distance matrix calculation can still be optimized by using a \textit{vectorized} approach.
 
-    During a regular BFS, the algorithm visits growing $k$-hop neighborhoods of the start node until it finds the target node.
+    During a regular BFS, the algorithm visits the growing $k$-hop neighborhoods of the start node until it finds the target node.
     Since in our case, we are calculating the entire distance matrix (for a set of nodes), 
     we can optimize the process by searching for all the target nodes in the same BFS run.
     This allows us to acquire the shortest path distances between the start node and all 
@@ -512,17 +512,16 @@ The following pseudocode example describes the vectorized BFS algorithm:
 Notice the underlined parts of the algorithm - these are the parts that differ from the regular breadth-first search for a single target node.
 Unlike the single target BFS, the vectorized version only terminates once all the target nodes are visited.
 
-Note that - given we consider the \textit{targets} list constant-sized - the algorithm has the same asymptotic complexity as the regular BFS - i.e. $\mathcal{O}(V + E)$.
+Note that - given we consider the \textit{targets} list constant-sized - the algorithm has the same asymptotic complexity as the regular BFS - i.e., $\mathcal{O}(V + E)$.
 This is obvious if we compare this vectorized approach to the regular single-target BFS for the \textit{furthest} target node.
 Both algorithms visit the same number of nodes and edges, the only difference is in the output - the vectorized BFS outputs the distances to all the target nodes.
 
 At the time of writing this thesis (\today), the vectorized BFS algorithm is not implemented
 in Memgraph or any other major graph database (Neo4j, OrientDB, ArangoDB). 
-While with the vertex identifiers inlined in the query, the Cypher query planner might be able to automatically recognize the 
-need for the vectorized BFS, the obscure nature of the use case is likely the reason for the lack of the implementation.
+While with the vertex identifiers inlined in the query, the Cypher query planner might be able to automatically recognize the need for the vectorized BFS, the obscure nature of the use case is likely the reason for the lack of the implementation.
 
 Because of this, we implement our own distance matrix calculator based on the vectorized BFS algorithm in C++\footnote{Implementation at \url{https://github.com/barjin/master-thesis/tree/main/examples/distance-matrix}}.
-This program takes the graph data - i.e. the output of \hyperref[fig:monopartite-projection]{Figure \ref*{fig:monopartite-projection}} - in CSV format and parses the data into an in-memory graph representation.
+This program takes the graph data - i.e., the output of \hyperref[fig:monopartite-projection]{Figure \ref*{fig:monopartite-projection}} - in CSV format and parses the data into an in-memory graph representation.
 It then iterates over a list of the user-specified target nodes, taking each node as the start node for the \textit{VectorizedBFS} algorithm.
 The rest of the list is used as the target nodes for the algorithm. 
 
@@ -537,19 +536,19 @@ This is a significant improvement over the $k^2$ BFS runs in the original Memgra
     \label{fig:identity-inferrence-benchmarks}
 \end{figure}
 
-Benchmarks show that the vectorized BFS algorithm is with mean time of $1.65\text{ ms}$ per pair of nodes significantly faster than the regular BFS algorithm.
+Benchmarks show that the vectorized BFS algorithm is with a mean time of $1.65\text{ ms}$ per pair of nodes significantly faster than the regular BFS algorithm.
 
 \hyperref[fig:identity-inferrence-benchmarks]{Figure \ref*{fig:identity-inferrence-benchmarks}} compares the results to two more possible optimizations of the vectorized approach.
 
 The \textbf{Vectorized symmetric} approach only calculates the upper triangle of the distance matrix and mirrors the results to the lower triangle.
-This utilizes the fact that the social network graph we are using is undirected - i.e. the shortest path distance between the nodes $u$ and $v$ is the same as the distance between the nodes $v$ and $u$.
-This makes the distance matrix symmetric, and allows us to save half of the calculations by only calculating the upper triangle.
+This utilizes the fact that the social network graph we are using is undirected - i.e., the shortest path distance between the nodes $u$ and $v$ is the same as the distance between the nodes $v$ and $u$.
+This makes the distance matrix symmetric and allows us to save half of the calculations by only calculating the upper triangle.
 
 This approach brings next to no performance improvement over the regular vectorized BFS.
 The reason becomes apparent when we consider the fact that the vectorized BFS's complexity is $\mathcal{O}(V + E)$ - i.e. does not depend on the number of the target nodes.
 
 The approach labeled \textbf{Vectorized w/ threads} parallelizes the vectorized BFS algorithm using multithreading.
-Since the BFS algorithm is inherently sequential, the parallelization is done on the outer loop iterating through the start nodes.
+Since the BFS algorithm is inherently sequential, parallelization is done on the outer loop iterating through the start nodes.
 The parallelization itself is quite straightforward, as \textit{VectorizedBFS} is a pure function with no side effects.
 
 This approach comes out as the most performant, with the mean time of $0.45\text{ ms}$ per pair of nodes.
@@ -562,17 +561,17 @@ For the purpose of this thesis, we will be using specifically the \textit{bottom
 Unlike the naïve approach, the hierarchical clustering algorithm is parametrizable. Note that in the step $2(c)$ of the proposed algorithm, 
 we are mentioning a \textit{static preselected threshold condition} for the cluster boundaries.
 
-Any bottom-up hierarchical clustering algorithm starts with original datapoints as separate clusters and iteratively merges the closest clusters together - until there is only one cluster left.
-We need to break down the hierarchy of recursively merging clusters into the disjoint groups of nodes with the same inferred identifier.
+Any bottom-up hierarchical clustering algorithm starts with original data points as separate clusters and iteratively merges the closest clusters together - until there is only one cluster left.
+We need to break down the hierarchy of recursively merging clusters into disjoint groups of nodes with the same inferred identifier.
 
 \cite{cophenetic} define the \textit{cophenetic value} (or \textit{cophenetic distance}) of two clusters as the distance at which the two clusters are merged.
 Considering a maximum cophenetic value $c_{\text{max}}$, we can define a stopping criterion for the hierarchical clustering algorithm.
 
-If the two clusters we are about to merge are at the distance $c_{\text{max}}$ or further apart, we stop the merging process and 
+If the two clusters we are about to merge are at a distance $c_{\text{max}}$ or further apart, we stop the merging process and 
 return the currently existing clusters as the final data point grouping.
 
 As mentioned earlier, the closest distance between two mergeable candidates in our graph is $4$. 
-This is because two person nodes we can consider to be mergeable have to be connected to two different publication nodes.
+This is because two-person nodes we can consider to be mergeable have to be connected to two different publication nodes.
 These publication nodes need to be connected by - at least - one other person node.
 
 Since the best choice for the cutoff distance is unclear, we will later evaluate the performance of the hierarchical clustering algorithm for different threshold values.
@@ -589,7 +588,7 @@ Firstly, the external (no-identifier) authors are always associated with a singl
 Therefore, for evaluation, we split the internal authors into multiple nodes - each representing a single ``authorship'' of a publication.
 We then connect these nodes to the respective publication node.
 
-Note that only splitting the internal authors into multiple nodes would result in a severely disconneted graph
+Note that only splitting the internal authors into multiple nodes would result in a severely disconnected graph
 - each publication would be a separate connected component.
 This would effectively disable the hierarchical clustering algorithm based on the path lengths between 
 individual merge candidates. 
@@ -601,11 +600,11 @@ individual merge candidates.
     \caption{The splitting of the internal authors into multiple nodes. Encircled nodes represent the original author identities. Note that the resulting graph is disconnected.}
 \end{figure}
 
-We can see that for a single set of merge candidates - i.e. nodes with the same normalized name - 
+We can see that for a single set of merge candidates - i.e., nodes with the same normalized name - 
 most nodes would end up in separate connected components after the splitting (with the exception of two different people with the same normalized name collaborating on the same publication).
 
 We solve this issue by reintroducing the original internal author nodes into the graph.
-This operation requires attention too, though. 
+This operation requires attention, too, though. 
 Consider a merge candidate set $\mathbf{C}$ consisting solely of the ``authorship'' nodes for a single internal author.
 After returning the original author node to the graph, the distance matrix for $\mathbf{C}$ would degenerate to
 $$
@@ -628,7 +627,7 @@ For each BFS run, we add the original author node to the forbidden set, effectiv
     \captionsetup{width=.9\linewidth}
     \includegraphics[width=0.7\textwidth]{../img/merging-splitting-reintroduced.png}
     \centering
-    \caption{Graph after reintroducing the original author nodes (blue). The graph is now connected. Note that for calculating the distance between two split ``authorship'' nodes, we forbid the BFS algorithm from visiting their original author node.}
+    \caption{Graph after reintroducing the original author nodes (blue). The graph is now connected. Note that to calculate the distance between two split ``authorship'' nodes, we forbid the BFS algorithm from visiting their original author node.}
 \end{figure}
 
 \subsubsection{Evaluation metrics}
@@ -644,7 +643,7 @@ f(n, C_{n}) = \min(\{\text{r.PERSON\_ID} \mid r \in C_{n}\})
 $$
 
 Just like in the naïve case, we simply group all the nodes in the cluster under the minimal identifier - but now only in the context of the cluster.
-Note that in a case of a degenerated clustering algorithm always returning a single cluster containing all nodes with the same normalized name, the proposed algorithm would yield the same results as the naïve approach.
+Note that in the case of a degenerated clustering algorithm always returning a single cluster containing all nodes with the same normalized name, the proposed algorithm would yield the same results as the naïve approach.
 
 As we proposed in the \hyperref[sec:clustering-process]{Subsection \ref*{sec:clustering-process}}, we evaluate the performance of the hierarchical clustering algorithm for different threshold values
 to determine the optimal cutoff distance.
@@ -656,21 +655,21 @@ to determine the optimal cutoff distance.
     \caption{The F1 scores for the hierarchical clustering algorithm for different threshold values.\protect\footnotemark}
 \end{figure}\label{fig:hierarchical-f1}
 
-\footnotetext{Both methods have been reevaluated on a smaller representative subset of data ($n = 500$). For this reason, the naïve approach performance slighly differs from the previous evaluation.}
+\footnotetext{Both methods have been reevaluated on a smaller representative subset of data ($n = 500$). For this reason, the naïve approach performance slightly differs from the previous evaluation.}
 
 We notice that for the maximum cophenetic distance $c_{\text{max}} = 2$, the algorithm performance is very poor.
 This is because in such case, the algorithm cannot merge any two merge candidates - as the closest distance between them is $4$.
 In such case the algorithm only correctly classifies the first node in the cluster - while the rest of the nodes are (incorrectly) classified as separate entities.
 
-We also see that the performance of the hierarchical clustering algorithm is dominated by the naïve approach, regardless the parameters.
-Unsurprisingly, the both methods perform more similar with the increasing cutoff cophenetic distance. 
+We also see that the performance of the hierarchical clustering algorithm is dominated by the naïve approach, regardless of the parameters.
+Unsurprisingly, both methods perform more similarly with the increasing cutoff cophenetic distance. 
 This is because the naïve approach is essentially a special case of the hierarchical clustering algorithm with a fixed (infinite) cutoff distance
  - merging all the nodes with the same normalized name in one cluster.
 
  The superior performance of the naïve approach is likely caused by the nature of the input data and the variance in the normalized names.
- While the possibility of splitting the overmerged groups into multiple clusters with the hierarchical clustering algorithm might seem advantageous,
- we see that it is not the case in the context of the academic social network data.
+ While the possibility of splitting the over-merged groups into multiple clusters with the hierarchical clustering algorithm might seem advantageous,
+ We see that this is not the case in the context of academic social network data.
 
  Note that the macro F1 score for hierarchical merging continues to grow with the increasing cutoff distance, 
  meeting the performance of the naïve approach at $1000$. This is because the distance matrix computation tool 
- denotes “infinite” distance (e.g. between two nodes in two disconnected components of the graph) as $999$.
+ denotes “infinite” distance (e.g., between two nodes in two disconnected components of the graph) as $999$.

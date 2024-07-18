@@ -3,7 +3,7 @@
 
 The goal of this thesis was to improve the \href{https://explorer.cuni.cz/}{Charles Explorer web application} - both in terms of user experience and the search engine - using the synthesized \textit{academic social network} from the existing relational data.
 
-We \hyperref[sec:target-data-model]{have devised} a highly performant pipeline for trasforming the relational data into a graph representation of the academic social network.
+We \hyperref[sec:target-data-model]{have devised} a highly performant pipeline for transforming the relational data into a graph representation of the academic social network.
 After the transformation, we explored the network and proposed various ways of utilizing the network metrics for \hyperref[sec:inferring-missing-identities]{inferring missing data}.
 
 Surprisingly, the baseline naïve methods \hyperref[fig:hierarchical-f1]{dominated} the network-based methods in the task of inferring missing data.
@@ -11,7 +11,7 @@ This is likely due to the specific distribution of person names in our testing d
 The \hyperref[sec:on-demand-identity-inference]{improved (context-aware) naïve approach}, showed even more promising results and is now a part of the Charles Explorer application.
 
 With the synthesized social network in place, 
-we \hyperref[search-ranking-issues]{expressed concerns} about the quality of full-text search based ranking and we explored the possibility of using the network for re-ranking the search results in the Charles Explorer application.
+we \hyperref[search-ranking-issues]{expressed concerns} about the quality of full-text search-based ranking, and we explored the possibility of using the network for re-ranking the search results in the Charles Explorer application.
 
 Deeper comparison with search results of the Elsevier Scopus academic search engine revealed that
 professional search engines \hyperref[baseline-benchmark]{seemingly} use only full-text search based ranking too.
@@ -25,8 +25,8 @@ did outperform the full-text search based ranking - the computational performanc
 Lastly, we have \hyperref[sec:current-state]{assessed} the user experience of the Charles Explorer application 
 and identified the problematic parts of the existing visualization tool for the academic social network.
 
-We \hyperref[sec:addressing-issues]{reimplemented the tool} for visualising the academic social network in the Charles Explorer application. 
+We \hyperref[sec:addressing-issues]{reimplemented the tool} for visualizing the academic social network in the Charles Explorer application. 
 The tool now better adheres to the visualization principles of graph data, it is more user-friendly and performant.
 By simplifying certain parts of the visualization, we improve the interpretability of the visualized data.
 
-This visualization tool became a part of the Charles Explorer application and is now available to the users.
+This visualization tool became a part of the Charles Explorer application and is now available to users.

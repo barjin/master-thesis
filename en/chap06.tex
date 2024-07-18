@@ -8,7 +8,7 @@ while using different visual cues to guide the viewers' attention towards differ
 In this part of the thesis, we will assess the current state of the visualizations in the Charles Explorer application, 
 will propose some improvements to make the visualization more accessible to the users and will implement those.
 
-At the moment of publishing this thesis, the person search mode in the Charles Explorer application\footnote{Available e.g. at \url{https://explorer.cuni.cz/person/1732969562160398}} already contains the experimental prototype of the changes proposed in this chapter.
+At the moment of publishing this thesis, the person search mode in the Charles Explorer application\footnote{Available, e.g., at \url{https://explorer.cuni.cz/person/1732969562160398}} already contains the experimental prototype of the changes proposed in this chapter.
 For consistency, we will still consider the ``current state'' of the visualization the one \textit{without} the proposed changes.
 
 The implementation of the visualization components is available in the GitLab repository\footnote{At \url{https://gitlab.mff.cuni.cz/barj/charles-explorer/}}.
@@ -21,7 +21,7 @@ The implementation of the visualization components is available in the GitLab re
 
 The current state of the Charles Explorer visualization views is quite simple. 
 
-In the \textit{Person} search mode, the user can search for people inside the Charles University. 
+In the \textit{Person} search mode, the user can search for people inside Charles University. 
 When accessing a person's profile, the application shows the person's \textit{ego network} with the main person and their direct collaborators 
 as nodes and their common publications aggregated to the edges.
 
@@ -32,7 +32,7 @@ as nodes and their common publications aggregated to the edges.
     \caption{Charles Explorer showing the \textit{ego network} of a person.}
 \end{figure}
 
-The graph is displayed with force-directed layout. The edge thickness is proportional to the number of common publications between 
+The graph is displayed with a force-directed layout. The edge thickness is proportional to the number of common publications between 
 the two people and the colors of the nodes represent the person's faculty association.
 
 This approach has multiple drawbacks which we will now discuss.
@@ -40,7 +40,7 @@ This approach has multiple drawbacks which we will now discuss.
 \subsection{Problems with color coding} \label{sec:color-coding}
 
 Firstly, the color coding of the nodes does not prove useful, as it hinders the \textit{visual decoding} of the graph.
-The user spends attention on reading the legend, rather than interpreting the graph subconciously.
+The user spends attention on reading the legend rather than interpreting the graph subconsciously.
 
 This is especially true for larger ego networks with many nodes with different faculty affiliations. 
 Additionaly, the application does not provide any alternative visual cue for color vision deficient users.
@@ -53,7 +53,7 @@ Additionaly, the application does not provide any alternative visual cue for col
 \end{figure}
 
 According to \cite{Cleveland1985}, the upper bound on color discrimination in one figure is 5–6 colors for a healthy viewer. 
-This is not enough for the 17 faculties and departments of the Charles University. 
+This is not enough for the 17 faculties and departments of Charles University. 
 With faculties, there is also little room for a meaningful aggregation (of more faculties into one color), as the faculty structure is not hierarchical.
 
 \subsection{Layouting problems} \label{sec:layouting-problems}
@@ -89,7 +89,7 @@ A publication with $n$ authors contributes to $\frac{n(n-1)}{2}$ edges between i
 This means that publications with one author are not represented in the graph at all, as there are no edges to draw between the nodes.
 
 For publications with more than two authors, one publication is represented by multiple edges between all the pairs of the authors.
-This clutters the graph with edges and makes the publication - edge mapping less readable. 
+This clutters the graph with edges and makes the publication-edge mapping less readable. 
 For correct representation of those publications, we would need to draw hyperedges between the nodes, which might cause the readability of the graph to decrease even further.
 
 \section{Addressing the issues}\label{sec:addressing-issues}
@@ -108,7 +108,7 @@ The edges between the nodes now represent an incidence relation between the two 
 The resulting graph is a bipartite graph, with two types of nodes - authors and publications, and edges connecting the authors to the publications they have co-authored.
 
 To support the \textit{visual decoding} of the graph, we distinguish the two types of nodes by their shape. 
-This way, the user can easily distinguish between the authors and the publications, even if they are color vision deficient 
+This way, the user can easily distinguish between the authors and the publications, even if they are color-vision deficient 
 or are viewing the visualization reproduced using a monochrome display medium (for example a print from a black-and-white printer).
 
 The main node (the ego) is highlighted with color fill - since it is the only node of this type in the graph,
@@ -131,7 +131,7 @@ This is only visible after the user hovers over the node with the mouse cursor, 
 As mentioned in \ref{sec:layouting-problems}, the arbitrary positions of the nodes in the force-directed layout increase the cognitive load of the viewer.
 For larger graphs, the viewer might not be able to find the node they are looking for, as the node position does not code any inherent information about the person.
 
-To address this, we propose a search tool which highlights the search results in the graph.
+To address this, we propose a search tool that highlights the search results in the graph.
 
 \begin{figure}[ht!]
     \captionsetup{width=.9\linewidth}
@@ -142,7 +142,7 @@ To address this, we propose a search tool which highlights the search results in
 \end{figure}
 
 To further improve the graph readability and the usability of the tool, we propose a \textit{query suggester}. 
-This is an user interface element consisting of multiple buttons with predefined queries, which the user can click to search for the query in the graph.
+This is a user interface element consisting of multiple buttons with predefined queries, which the user can click to search for the query in the graph.
 The suggested queries are based on tf-idf analysis of the text data connected to the ego network (publication titles and abstracts). 
 
 The tokens (unigrams and bigrams) with the highest tf-idf score are selected as the suggested queries.
@@ -154,7 +154,7 @@ this has removed some of the information from the graph view.
 
 In the original visualization, the faculty affiliation for people was displayed as the node color.
 This has helped the user to quickly identify the faculty affiliation of the ego's collaborators, 
-but also to see the distribution of the  faculty affiliations in the ego network, 
+but also to see the distribution of the faculty affiliations in the ego network, 
 and identify interesting collaboration patterns. 
 This is no longer possible with the new tooltip-based approach.
 
@@ -175,9 +175,9 @@ This visualization is still suffering from some of the problems of the original 
 A publication with $n$ authors still contributes to $(n-1)$ pie chart arcs. 
 This causes the solo publications to not be represented in the pie chart at all, and the publications with more than two authors to be overrepresented.
 
-The color coding of the pie chart arcs (denoting the faculty affiliation) is also not ideal, since it still poses a problem for color vision deficient users.
+The color coding of the pie chart arcs (denoting the faculty affiliation) is also not ideal since it still poses a problem for color-vision deficient users.
 
-For addressing these issues, we add few more features to the pie chart view.
+To address these issues, we add a few more features to the pie chart view.
 
 Firstly, we reuse the tooltip user interface element from the graph view. 
 When the user hovers over the pie chart arc, they can see the faculty affiliation name and the number of co-authored publications.
@@ -191,12 +191,12 @@ When the user clicks on the pie chart arc, the view filters the underlying data 
     \captionsetup{width=.9\linewidth}
     \includegraphics[width=0.8\textwidth]{../img/pie-chart-filter.png}
     \centering
-    \caption{Right-clicking on the pie chart arc shows intersection of the ego's and the clicked-on person's collaborators.}
+    \caption{Right-clicking on the pie chart arc shows the intersection of the ego's and the clicked-on person's collaborators.}
 \end{figure}
 
 The \texttt{AND} filter can be used repeatedly, adding new ``pinned'' collaborators one at a time.
 Focusing on a smaller subset of the ego network can help to mitigate the problems with the overrepresentation of the publications with more than two authors
-help the user to understand the smaller-scale collaboration patterns better.
+helping the user to understand the smaller-scale collaboration patterns better.
 
 The filter also applies to the left side of the view, where the user can see the actual publications of the selected co-authors.
 This further clears up the multiple co-authorship problem.
